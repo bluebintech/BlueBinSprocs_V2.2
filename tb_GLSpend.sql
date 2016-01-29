@@ -25,16 +25,20 @@ FROM   GLTRANS a
        INNER JOIN GLNAMES c
                ON a.ACCT_UNIT = c.ACCT_UNIT
                   AND a.COMPANY = c.COMPANY
-WHERE  SUMRY_ACCT_ID = 70
+WHERE  SUMRY_ACCT_ID in (select ConfigValue from bluebin.Config where ConfigName = 'GLSummaryAccountID')
 GROUP  BY FISCAL_YEAR,
           ACCT_PERIOD,
           a.ACCOUNT,
           b.ACCOUNT_DESC,
           a.ACCT_UNIT,
           c.DESCRIPTION 
+
+
 END
 GO
 grant exec on tb_GLSpend to public
 GO
+
+
 
 

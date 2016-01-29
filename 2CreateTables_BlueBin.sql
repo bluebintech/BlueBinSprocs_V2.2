@@ -36,6 +36,8 @@ CREATE TABLE [bluebin].[Config](
 
 insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated)
 VALUES
+('GLSummaryAccountID','','Tableau',1,getdate()),
+('PO_DATE','1/1/2015','Tableau',1,getdate()),
 ('TrainingTitle','Tech','DMS',1,getdate()),
 ('BlueBinHardwareCustomer','Demo','DMS',1,getdate()),
 ('TimeOffset','3','DMS',1,getdate()),
@@ -116,12 +118,22 @@ CREATE TABLE [bluebin].[BlueBinOperations](
 	[Description] varchar (255) NULL
 )
 
-Insert into bluebin.BlueBinOperations (OpName) VALUES
-('ADMIN-MENU'),
-('ADMIN-CONFIG'),
-('ADMIN-USERS'),
-('ADMIN-RESOURCES'),
-('ADMIN-TRAINING')
+Insert into bluebin.BlueBinOperations (OpName,[Desription]) VALUES
+('ADMIN-MENU','Give User ability to see the Main Admin Menu'),
+('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
+('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),
+('ADMIN-RESOURCES','Give User ability to see the Sub Admin Menu Resources'),
+('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training'),
+('MENU-Dashboard','Give User ability to see the Dashboard Menu'),
+('MENU-QCN','Give User ability to see the QCN Menu'),
+('MENU-Gemba','Give User ability to see the Gemba Menu'),
+('MENU-Hardware','Give User ability to see the Hardware Menu'),
+('MENU-Scanning','Give User ability to see the Scanning Menu'),
+('MENU-Other','Give User ability to see the Other Menu'),
+('MENU-Dashboard-SupplyChain','Give User ability to see the Supply Chain DB'),
+('MENU-Dashboard-Sourcing','Give User ability to see the Sourcing DB'),
+('MENU-Dashboard-Ops','Give User ability to see the Op Performance DB'),
+('MENU-Dashboard-HuddleBoard','Give User ability to see the Huddle Board')
 END
 GO
 

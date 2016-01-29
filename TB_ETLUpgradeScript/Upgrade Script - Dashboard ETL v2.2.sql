@@ -643,7 +643,7 @@ SELECT Row_number()
            #BinAddDates.BinAddedDate                                                                  AS BinGoLiveDate,
            COALESCE(COALESCE(#ItemReqs.UNIT_COST, #ItemOrders.ENT_UNIT_CST), #ItemStore.LAST_ISS_COST) AS BinCurrentCost,
            CASE
-             WHEN ITEMLOC.USER_FIELD1 = 'Consignment                   ' THEN 'Y'
+             WHEN ltrim(rtrim(ITEMLOC.USER_FIELD1)) = 'Consignment' THEN 'Y'
              ELSE 'N'
            END                                                                                        AS BinConsignmentFlag,
            #ItemAccounts.ISS_ACCOUNT                                                                  AS BinGLAccount,
@@ -1115,61 +1115,104 @@ GO
 
 CREATE PROCEDURE etl_FactWarehouseSnapshot
 AS
+--exec etl_FactWarehouseSnapshot  
 
 /*********************		DROP FactWarehouseSnapshot		***************************/
 
   BEGIN TRY
-      DROP TABLE bluebin.FactWarehouseSnapshot
+      drop table bluebin.FactWarehouseSnapshot 
   END TRY
 
   BEGIN CATCH
   END CATCH
 
-/******************		CREATE Temp Tables				****************************/
-    SELECT Row_number()
+/******************		QUERY				****************************/
+;
+
+	
+select 
+	LOCATION,
+	ITEM,
+       SOH_QTY       AS SOHQty,
+	   LAST_ISS_COST	AS UnitCost,
+	   convert(DATE,getdate()) as MonthEnd
+into TempA# 
+from ITEMLOC 
+where 
+	LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+	and SOH_QTY > 0 
+	OR 
+	LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') and 
+	ITEM in (select distinct ITEM from ICTRANS where LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION'))
+	--AND ITEM in ('0000013','0000018')
+
+
+    SELECT 
+		Row_number()
              OVER(
-               PARTITION BY LOCATION, ITEM, Eomonth(TRANS_DATE)
-               ORDER BY Cast(CONVERT(VARCHAR, TRANS_DATE, 101) + ' ' + LEFT(RIGHT('00000' + CONVERT(VARCHAR, ACTUAL_TIME), 4), 2) + ':' + Substring(RIGHT('00000' + CONVERT(VARCHAR, ACTUAL_TIME), 4), 3, 2) AS DATETIME) DESC ) AS WarehouseSnapshotSeq,
-           *
-    INTO   #MonthEndIssues
-    FROM   ICTRANS
+               PARTITION BY a.ITEM
+               ORDER BY a.MonthEnd DESC) as [Sequence],
+		a.MonthEnd,
+		a.ITEM,
+		case when a.MonthEnd = convert(DATE,getdate()) then TempA#.SOHQty else (ISNULL(b.QUANTITY,0)*-1) end as QUANTITY,
+		(ISNULL(c.QUANTITY,0)*-1) as QUANTITYIN
 
-    SELECT DISTINCT Eomonth(Date) AS MonthEnd
-    INTO   #MonthEndDates
-    FROM   bluebin.DimDate
+    into TempB#
+	FROM   
+	(SELECT DISTINCT 
+		case when left(Date,11) = left(getdate(),11) then Date else Eomonth(Date) end AS MonthEnd,
+		ITEM
+		FROM   bluebin.DimDate,TempA#) a
+		LEFT JOIN
+		(select 
+			ITEM,
+			EOMONTH(DATEADD(MONTH, -1, TRANS_DATE)) as MonthEnd,
+			SUM((QUANTITY)) as QUANTITY 
+			FROM   ICTRANS 
+			where 
+				LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+			group by ITEM,
+			EOMONTH(DATEADD(MONTH, -1, TRANS_DATE))) b on a.MonthEnd = b.MonthEnd and a.ITEM = b.ITEM 
+		LEFT JOIN
+		(select 
+			ITEM,
+			EOMONTH(DATEADD(MONTH, -1, REC_ACT_DATE)) as MonthEnd,
+			SUM((REC_QTY*EBUY_UOM_MULT)) as QUANTITY 
+			FROM   POLINE 
+			where 
+				LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+				and CXL_QTY = 0 and REC_QTY > 0 and ITEM_TYPE = 'I'
+			group by ITEM,
+			EOMONTH(DATEADD(MONTH, -1, REC_ACT_DATE))) c on a.MonthEnd = c.MonthEnd and a.ITEM = c.ITEM 
+		left join TempA# on a.MonthEnd = TempA#.MonthEnd and a.ITEM = TempA#.ITEM
+    WHERE  a.MonthEnd <= Getdate() 
 
 
-/******************		CREATE FactWarehouseSnapshot	***********************************/
 
-    SELECT COMPANY                  AS FacilityKey,
-           c.LocationKey,
-           d.ItemKey,
-           Cast(a.MonthEnd AS DATE) AS SnapshotDate,
-           TRAN_UOM                 AS UOM,
-           TRAN_UOM_MULT            AS UOMMult,
-           SOH_QTY                  AS SOH,
-           UNIT_COST                AS UnitCost
-    INTO   bluebin.FactWarehouseSnapshot
-    FROM   #MonthEndDates a
-           LEFT JOIN #MonthEndIssues b
-                  ON a.MonthEnd >= b.TRANS_DATE
-           INNER JOIN bluebin.DimLocation c
-                   ON b.LOCATION = c.LocationID
-           INNER JOIN bluebin.DimItem d
-                   ON b.ITEM = d.ItemID
-    WHERE  b.WarehouseSnapshotSeq = 1
-           AND a.MonthEnd <= Getdate()
+select 
+ic.COMPANY AS FacilityKey,
+ic.LOCATION as LocationID,
+TempB#.MonthEnd as SnapshotDate,
+TempB#.ITEM,
+SUM(TempB#.QUANTITY+TempB#.QUANTITYIN) OVER (PARTITION BY TempB#.ITEM ORDER BY TempB#.[Sequence]) as SOH,
+ic.LAST_ISS_COST  AS UnitCost  
+--,SUM(TempB#.QUANTITY+TempB#.QUANTITYIN) OVER (PARTITION BY TempB#.ITEM ORDER BY TempB#.[Sequence])*ic.LAST_ISS_COST as B
+into bluebin.FactWarehouseSnapshot
+from TempB# 
+inner join ITEMLOC ic on TempB#.ITEM = ic.ITEM
+where ic.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
 
-/*********************	DROP Temp Tables		******************************/
-    DROP TABLE #MonthEndDates
-    DROP TABLE #MonthEndIssues 
+drop table TempA#
+drop table TempB#
 
+/*********************	END		******************************/
 
 GO
 
 UPDATE etl.JobSteps
 SET LastModifiedDate = GETDATE()
 WHERE StepName = 'FactWarehouseSnapshot'
+
 GO
 
 
@@ -1275,6 +1318,8 @@ GO
 
 *****************************************************************************/
 
+
+
 IF EXISTS ( SELECT  *
             FROM    sys.objects
             WHERE   object_id = OBJECT_ID(N'tb_Sourcing')
@@ -1284,7 +1329,7 @@ DROP PROCEDURE  tb_Sourcing
 GO
 
 CREATE PROCEDURE	tb_Sourcing
---exec tb_Sourcing  select * from tableau.Sourcing
+--exec tb_Sourcing  select count(*) from tableau.Sourcing where PODate >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE')
 AS
 
 /********************************		DROP Sourcing		**********************************/
@@ -1329,10 +1374,11 @@ SELECT a.COMPANY,
        c.INVOICE_AMT
 INTO   #tmpPOLines
 FROM   POLINE a
-       LEFT JOIN PURCHORDER b
+       INNER JOIN PURCHORDER b
               ON a.PO_NUMBER = b.PO_NUMBER
                  AND a.COMPANY = b.COMPANY
                  AND a.PO_CODE = b.PO_CODE
+				 AND a.PO_RELEASE = b.PO_RELEASE
        LEFT JOIN (SELECT PO_NUMBER,
                          LINE_NBR,
                          Sum(TOT_DIST_AMT) AS INVOICE_AMT
@@ -1346,8 +1392,12 @@ FROM   POLINE a
                  AND a.PO_NUMBER = d.PO_NUMBER
                  AND a.LINE_NBR = d.LINE_NBR
                  AND a.PO_CODE = d.PO_CODE
-WHERE  b.PO_DATE >= '1/1/2014'
+				 AND a.PO_RELEASE = d.PO_RELEASE
+WHERE  b.PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE') 
+		AND b.PO_RELEASE = 0
        AND a.CXL_QTY = 0; 
+
+
 
 --#tmpMMDIST
 SELECT DOC_NUMBER    AS PO_NUMBER,
@@ -1363,7 +1413,7 @@ WHERE  SYSTEM_CD = 'PO'
        AND DOC_TYPE = 'PT'
        AND DOC_NUMBER IN (SELECT PO_NUMBER
                           FROM   PURCHORDER
-                          WHERE  PO_DATE >= '1/1/2014'); 
+                          WHERE  PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE')); 
 
 --#tmpPOStatus
 SELECT Row_number()
@@ -1456,7 +1506,6 @@ SELECT *,
          ELSE 0
        END AS Late
 INTO   tableau.Sourcing 
-		
 FROM   #tmpPOs
 LEFT JOIN bluebin.DimLocation dl on PurchaseLocation = dl.LocationID
 
@@ -1476,7 +1525,6 @@ WHERE StepName = 'Sourcing'
 GO
 grant exec on tb_Sourcing to public
 GO
-
 
 /*******************************************************************************
 
@@ -1705,7 +1753,7 @@ GO
 CREATE PROCEDURE	etl_DimWarehouseItem
 
 AS
-
+--exec etl_DimWarehouseItem
 /********************************		DROP DimWarehouseItem		**********************************/
 
 BEGIN TRY
@@ -1715,9 +1763,12 @@ END TRY
 BEGIN CATCH
 END CATCH
 
+
+
 SELECT 
-		d.LocationID,
-		d.LocationName,
+		--d.LocationID,
+		a.LOCATION as LocationID,
+		a.LOCATION as LocationName,
 		b.ItemKey,
        b.ItemID,
        b.ItemDescription,
@@ -1738,22 +1789,28 @@ INTO   bluebin.DimWarehouseItem
 FROM   ITEMLOC a
        INNER JOIN bluebin.DimItem b
                ON a.ITEM = b.ItemID
-       INNER JOIN ICCATEGORY c
-               ON a.COMPANY = c.COMPANY
-                  AND a.LOCATION = c.LOCATION
-                  AND a.GL_CATEGORY = c.GL_CATEGORY
-		INNER JOIN bluebin.DimLocation d
-		ON a.LOCATION = d.LocationID
---		INNER JOIN ICLOCATION e
---		ON a.COMPANY = e.COMPANY
---		AND a.LOCATION = e.LOCATION
---WHERE e.LOCATION_TYPE <> 'P'
- 
+       --INNER JOIN ICCATEGORY c
+       --        ON a.COMPANY = c.COMPANY
+       --           AND a.LOCATION = c.LOCATION
+       --           AND a.GL_CATEGORY = c.GL_CATEGORY
+		--INNER JOIN 
+		--bluebin.DimLocation d
+		--ON a.LOCATION = d.LocationID
+		--INNER JOIN ICLOCATION e
+		--ON a.COMPANY = e.COMPANY
+		--AND a.LOCATION = e.LOCATION
+
+WHERE a.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+
+
 GO
 
 UPDATE etl.JobSteps
 SET LastModifiedDate = GETDATE()
 WHERE StepName = 'Warehouse Item'
+
+
+GO
 
 Print 'ETL Sprocs updated'
 GO
@@ -1941,6 +1998,7 @@ GO
 --*********************************************************************************************
 --Tableau Sproc  These load data into the datasources for Tableau
 --*********************************************************************************************
+
 if exists (select * from dbo.sysobjects where id = object_id(N'tb_GLSpend') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
 drop procedure tb_GLSpend
 GO
@@ -1968,17 +2026,22 @@ FROM   GLTRANS a
        INNER JOIN GLNAMES c
                ON a.ACCT_UNIT = c.ACCT_UNIT
                   AND a.COMPANY = c.COMPANY
-WHERE  SUMRY_ACCT_ID = 70
+WHERE  SUMRY_ACCT_ID in (select ConfigValue from bluebin.Config where ConfigName = 'GLSummaryAccountID')
 GROUP  BY FISCAL_YEAR,
           ACCT_PERIOD,
           a.ACCOUNT,
           b.ACCOUNT_DESC,
           a.ACCT_UNIT,
           c.DESCRIPTION 
+
+
 END
 GO
 grant exec on tb_GLSpend to public
 GO
+
+
+
 
 
 
@@ -2004,8 +2067,16 @@ SET NOCOUNT ON
 SELECT 
 	a.ITEM as LawsonItemNumber,
 	ISNULL(c.MANUF_NBR,'N/A') as ItemManufacturerNumber,
-	c.DESCRIPTION as [Description],
-	ISNULL(b.ClinicalDescription,'*NEEDS*') as ClinicalDescription,
+	case 
+		when b.ClinicalDescription is null or b.ClinicalDescription = ''  then
+		case
+			when a.USER_FIELD3 is null or a.USER_FIELD3 = ''  then
+			case	
+				when a.USER_FIELD1 is null or a.USER_FIELD1 = '' then '*NEEDS*' 
+			else a.USER_FIELD1 end
+		else a.USER_FIELD3 end
+	else b.ClinicalDescription		
+		end as ClinicalDescription,
 	a.LOCATION as LocationCode,
 	a.NAME as LocationName,
 	a.Cart,
@@ -2016,10 +2087,16 @@ FROM
 	ITEM,
 	LOCATION,
 	b.NAME,
-	CASE WHEN PREFER_BIN LIKE '[A-Z][A-Z]%' THEN LEFT(PREFER_BIN, 2) ELSE LEFT(PREFER_BIN, 1) END as Cart,
-	CASE WHEN PREFER_BIN LIKE '[A-Z][A-Z]%' THEN SUBSTRING(PREFER_BIN, 3, 1) ELSE SUBSTRING(PREFER_BIN, 2,1) END as Row,
-	CASE WHEN PREFER_BIN LIKE '[A-Z][A-Z]%' THEN SUBSTRING (PREFER_BIN,4,2) ELSE SUBSTRING(PREFER_BIN, 3,2) END as Position	
-FROM ITEMLOC a INNER JOIN RQLOC b ON a.LOCATION = b.REQ_LOCATION 
+	USER_FIELD1,
+	USER_FIELD3,
+	CASE WHEN ISNUMERIC(left(PREFER_BIN,1))=1 then LEFT(PREFER_BIN,2) 
+		else CASE WHEN PREFER_BIN LIKE '[A-Z][A-Z]%' THEN LEFT(PREFER_BIN, 2) ELSE LEFT(PREFER_BIN, 1) END END as Cart,
+	CASE WHEN ISNUMERIC(left(PREFER_BIN,1))=1 then SUBSTRING(PREFER_BIN, 3, 1) 
+		else CASE WHEN PREFER_BIN LIKE '[A-Z][A-Z]%' THEN SUBSTRING(PREFER_BIN, 3, 1) ELSE SUBSTRING(PREFER_BIN, 2,1) END END as Row,
+	CASE WHEN ISNUMERIC(left(PREFER_BIN,1))=1 then SUBSTRING(PREFER_BIN, 4, 2)
+		else CASE WHEN PREFER_BIN LIKE '[A-Z][A-Z]%' THEN SUBSTRING (PREFER_BIN,4,2) ELSE SUBSTRING(PREFER_BIN, 3,2) END END as Position	
+FROM ITEMLOC a 
+INNER JOIN RQLOC b ON a.LOCATION = b.REQ_LOCATION 
 WHERE LEFT(REQ_LOCATION, 2) IN (SELECT [ConfigValue] FROM   [bluebin].[Config] WHERE  [ConfigName] = 'REQ_LOCATION' AND Active = 1)) a
 LEFT JOIN 
 (SELECT 
@@ -2029,16 +2106,14 @@ FROM ITEMLOC
 WHERE LOCATION IN (SELECT [ConfigValue] FROM [bluebin].[Config] WHERE  [ConfigName] = 'LOCATION' AND Active = 1) AND LEN(LTRIM(USER_FIELD3)) > 0
 ) b
 ON a.ITEM = b.ITEM
-left join ITEMMAST c on a.ITEM = c.ITEM
 
+left join ITEMMAST c on a.ITEM = c.ITEM
 
 
 END
 GO
 grant exec on tb_ItemLocator to public
 GO
-
-
 
 
 
@@ -2276,203 +2351,7 @@ GO
 --Tableau Sproc  These load data into the datasources for Tableau
 --*********************************************************************************************
 
-IF EXISTS ( SELECT  *
-            FROM    sys.objects
-            WHERE   object_id = OBJECT_ID(N'tb_Sourcing')
-                    AND type IN ( N'P', N'PC' ) ) 
 
-DROP PROCEDURE  tb_Sourcing
-GO
-
-CREATE PROCEDURE	tb_Sourcing
-
-AS
-
-/********************************		DROP Sourcing		**********************************/
-
-BEGIN TRY
-    DROP TABLE tableau.Sourcing
-END TRY
-
-BEGIN CATCH
-END CATCH
-
-/**********************************		CREATE Temp Tables		***************************/
-
--- #tmpPOLines
-
-SELECT a.COMPANY,
-       a.PO_NUMBER,
-       a.PO_RELEASE,
-       a.PO_CODE,
-       a.LINE_NBR,
-       a.ITEM,
-       a.ITEM_TYPE,
-       a.DESCRIPTION AS PO_DESCRIPTION,
-       a.QUANTITY,
-       a.REC_QTY,
-       a.AGREEMENT_REF,
-       a.ENT_UNIT_CST,
-       a.ENT_BUY_UOM,
-       a.EBUY_UOM_MULT,
-       b.PO_DATE,
-       a.EARLY_DL_DATE,
-       a.LATE_DL_DATE,
-       a.REC_ACT_DATE,
-       a.CLOSE_DATE,
-       a.LOCATION,
-       a.BUYER_CODE,
-       a.VENDOR,
-       d.REQ_LOCATION,
-       a.VEN_ITEM,
-       a.CLOSED_FL,
-       a.CXL_QTY,
-       c.INVOICE_AMT
-INTO   #tmpPOLines
-FROM   POLINE a
-       LEFT JOIN PURCHORDER b
-              ON a.PO_NUMBER = b.PO_NUMBER
-                 AND a.COMPANY = b.COMPANY
-                 AND a.PO_CODE = b.PO_CODE
-       LEFT JOIN (SELECT PO_NUMBER,
-                         LINE_NBR,
-                         Sum(TOT_DIST_AMT) AS INVOICE_AMT
-                  FROM   MAINVDTL
-                  GROUP  BY PO_NUMBER,
-                            LINE_NBR) c
-              ON a.PO_NUMBER = c.PO_NUMBER
-                 AND a.LINE_NBR = c.LINE_NBR
-       LEFT JOIN POLINESRC d
-              ON a.COMPANY = d.COMPANY
-                 AND a.PO_NUMBER = d.PO_NUMBER
-                 AND a.LINE_NBR = d.LINE_NBR
-                 AND a.PO_CODE = d.PO_CODE
-WHERE  b.PO_DATE >= '1/1/2014'
-       AND a.CXL_QTY = 0; 
-
---#tmpMMDIST
-SELECT DOC_NUMBER    AS PO_NUMBER,
-       LINE_NBR,
-       a.ACCT_UNIT,
-       b.DESCRIPTION AS ACCT_UNIT_NAME
-INTO #tmpMMDIST
-FROM   MMDIST a
-       LEFT JOIN GLNAMES b
-              ON a.COMPANY = b.COMPANY
-                 AND a.ACCT_UNIT = b.ACCT_UNIT
-WHERE  SYSTEM_CD = 'PO'
-       AND DOC_TYPE = 'PT'
-       AND DOC_NUMBER IN (SELECT PO_NUMBER
-                          FROM   PURCHORDER
-                          WHERE  PO_DATE >= '1/1/2014'); 
-
---#tmpPOStatus
-SELECT Row_number()
-         OVER(
-           ORDER BY a.PO_NUMBER, a.LINE_NBR) AS POKey,
-       COMPANY                           AS Company,
-       a.PO_NUMBER                         AS PONumber,
-       a.LINE_NBR                          AS POLineNumber,
-       PO_RELEASE                        AS PORelease,
-       PO_CODE                           AS POCode,
-       ITEM                              AS ItemNumber,
-       a.VENDOR                            AS VendorCode,
-	   d.VENDOR_VNAME					AS VendorName,
-       a.BUYER_CODE                        AS Buyer,
-	   c.NAME							AS BuyerName,
-       LOCATION                          AS ShipLocation,
-       ACCT_UNIT                         AS AcctUnit,
-       ACCT_UNIT_NAME                    AS AcctUnitName,
-       PO_DESCRIPTION                    AS PODescr,
-       QUANTITY                          AS QtyOrdered,
-       REC_QTY                           AS QtyReceived,
-       AGREEMENT_REF                     AS AgrmtRef,
-       ENT_UNIT_CST                      AS UnitCost,
-       ENT_BUY_UOM                       AS BuyUOM,
-       EBUY_UOM_MULT                     AS BuyUOMMult,
-       PO_DATE                           AS PODate,
-       EARLY_DL_DATE                     AS ExpectedDeliveryDate,
-       LATE_DL_DATE                      AS LateDeliveryDate,
-       REC_ACT_DATE                      AS ReceivedDate,
-       CLOSE_DATE                        AS CloseDate,
-       REQ_LOCATION                      AS PurchaseLocation,
-       VEN_ITEM                          AS VendorItemNbr,
-       CLOSED_FL                         AS ClosedFlag,
-       CXL_QTY                           AS QtyCancelled,
-       QUANTITY * ENT_UNIT_CST           AS POAmt,
-       INVOICE_AMT                       AS InvoiceAmt,
-       ITEM_TYPE                         AS POItemType,
-       CASE
-         WHEN ITEM_TYPE = 'S' THEN 0
-         ELSE
-           CASE
-             WHEN REC_QTY = 0 THEN 0
-             ELSE INVOICE_AMT - ( REC_QTY * ENT_UNIT_CST )
-           END
-       END                               AS PPV,
-       1                                 AS POLine
-INTO #tmpPOStatus
-FROM   #tmpPOLines a
-       LEFT JOIN #tmpMMDist b
-              ON a.PO_NUMBER = b.PO_NUMBER
-                 AND a.LINE_NBR = b.LINE_NBR 
-		LEFT JOIN BUYER c
-		ON a.BUYER_CODE = c.BUYER_CODE
-		LEFT JOIN APVENMAST d ON a.VENDOR = d.VENDOR
-
---#tmpPOs
-
-SELECT *,
-CASE WHEN ClosedFlag = 'Y' THEN 'Closed' ELSE
-	CASE WHEN QtyReceived + QtyCancelled = QtyOrdered THEN 'Closed' ELSE 'Open' END
-	END 																as POStatus,
-CASE WHEN POItemType = 'S' THEN 'N/A' ELSE
-	CASE WHEN Dateadd(day, 3, ExpectedDeliveryDate) <= GETDATE() AND (QtyReceived+QtyCancelled < QtyOrdered) THEN 'Late' ELSE
-		CASE WHEN Dateadd(day, 3, ExpectedDeliveryDate) > GETDATE() THEN 'In-Progress' ELSE
-			CASE WHEN ReceivedDate <= Dateadd(day, 3, ExpectedDeliveryDate) AND (QtyReceived + QtyCancelled) = QtyOrdered THEN 'On-Time' ELSE 'Late' END
-		END	
-	
-	END
-
-END as PODeliveryStatus
-INTO #tmpPOs
-FROM #tmpPOStatus
-
-
-/*************************		CREATE Sourcing		****************************/
-
-SELECT *,
-       CASE
-         WHEN PODeliveryStatus = 'In-Progress' THEN 1
-         ELSE 0
-       END AS InProgress,
-       CASE
-         WHEN PODeliveryStatus = 'On-Time' THEN 1
-         ELSE 0
-       END AS OnTime,
-       CASE
-         WHEN PODeliveryStatus = 'Late' THEN 1
-         ELSE 0
-       END AS Late
-INTO   tableau.Sourcing
-FROM   #tmpPOs
-
-/***********************		DROP Temp Tables	**************************/
-
-DROP TABLE #tmpPOLines
-DROP TABLE #tmpMMDIST
-DROP TABLE #tmpPOStatus
-DROP TABLE #tmpPOs
-
-GO
-
-UPDATE etl.JobSteps
-SET LastModifiedDate = GETDATE()
-WHERE StepName = 'Sourcing'
-
-GO
-grant exec on tb_Sourcing to public
-GO
 
 
 --*********************************************************************************************
@@ -2520,7 +2399,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'tb_WarehouseSize'
 drop procedure tb_WarehouseSize
 GO
 
---exec tb_ItemLocator
+--exec tb_WarehouseSize
 
 CREATE PROCEDURE tb_WarehouseSize
 
@@ -2543,8 +2422,8 @@ SELECT
        a.ReorderPoint,
        a.UnitCost,
 	   c.LastPODate,
-	   a.StockUOM as UOM,
-       Sum(CASE
+	   a.StockUOM as UOM
+       ,Sum(CASE
              WHEN TRANS_DATE >= Dateadd(YEAR, Datediff(YEAR, 0, Dateadd(YEAR, -1, Getdate())), 0)
                   AND TRANS_DATE <= Dateadd(YEAR, -1, Getdate()) THEN b.QUANTITY * -1
              ELSE 0
@@ -2554,12 +2433,11 @@ SELECT
              ELSE 0
            END) / Month(Getdate()) AS CYYTDIssueQty
 FROM   bluebin.DimWarehouseItem a
-       INNER JOIN ICTRANS b
-               ON a.ItemID = b.ITEM
-			   INNER JOIN bluebin.DimItem c
+       LEFT JOIN ICTRANS b
+               ON ltrim(rtrim(a.ItemID)) = ltrim(rtrim(ITEM)) 
+		LEFT JOIN bluebin.DimItem c
 			   ON a.ItemKey = c.ItemKey
-WHERE  b.DOC_TYPE = 'IS'
-       AND Year(TRANS_DATE) >= Year(Getdate()) - 1
+WHERE  SOHQty > 0 --b.DOC_TYPE = 'IS' and Year(b.TRANS_DATE) >= Year(Getdate()) - 1
 GROUP  BY a.LocationID,
 			a.LocationName,
 			a.ItemID,
@@ -2580,7 +2458,6 @@ GO
 grant exec on tb_WarehouseSize to public
 GO
 
-
 --*********************************************************************************************
 --Tableau Sproc  These load data into the datasources for Tableau
 --*********************************************************************************************
@@ -2590,27 +2467,26 @@ if exists (select * from dbo.sysobjects where id = object_id(N'tb_WarehouseSnaps
 drop procedure tb_WarehouseSnapshot
 GO
 
---exec tb_ItemLocator
-
+--exec tb_WarehouseSnapshot
 CREATE PROCEDURE tb_WarehouseSnapshot
 
 --WITH ENCRYPTION
 AS
 BEGIN
 SET NOCOUNT ON
-
 SELECT 
+	--count(ITEM),
 	SnapshotDate,
 	SUM(SOH * UnitCost) as DollarsOnHand,
 	LocationID,
-	LocationName
-FROM   bluebin.FactWarehouseSnapshot a
-INNER JOIN bluebin.DimLocation b
-ON a.LocationKey = b.LocationKey
+	LocationID as LocationName
+FROM bluebin.FactWarehouseSnapshot a
+WHERE SOH > 0
 GROUP BY
 	SnapshotDate,
-	LocationID,
-	LocationName
+	LocationID 
+
+
 END
 GO
 grant exec on tb_WarehouseSnapshot to public

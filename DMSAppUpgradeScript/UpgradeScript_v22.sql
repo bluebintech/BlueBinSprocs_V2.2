@@ -70,6 +70,52 @@ update bluebin.BlueBinUser set Email = email;
 alter table bluebin.BlueBinUser drop column email;
 END
 */
+--2.2
+if exists (select * from bluebin.BlueBinOperations where [Description] is null)
+BEGIN
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Admin Menu' where OpName = 'ADMIN-MENU'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Config' where OpName = 'ADMIN-CONFIG'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Users' where OpName = 'ADMIN-USERS'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Resources' where OpName = 'ADMIN-RESOURCES'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Training' where OpName = 'ADMIN-TRAINING'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Test' where OpName = 'ADMIN-TEST'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Dashboard Menu' where OpName = 'MENU-Dashboard'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the QCN Menu' where OpName = 'MENU-QCN'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Gemba Menu' where OpName = 'MENU-Gemba'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Hardware Menu' where OpName = 'MENU-Hardware'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Scanning Menu' where OpName = 'MENU-Scanning'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Other Menu' where OpName = 'MENU-Other'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Supply Chain DB' where OpName = 'MENU-Dashboard-SupplyChain'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sourcing DB' where OpName = 'MENU-Dashboard-Sourcing'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Op Performance DB' where OpName = 'MENU-Dashboard-Ops'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Huddle Board' where OpName = 'MENU-Dashboard-HuddleBoard'
+END
+
+if not exists (select * from bluebin.BlueBinOperations where [OpName] like 'MENU%')
+BEGIN
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard','Give User ability to see the Dashboard Menu'
+insert into bluebin.BlueBinOperations select 'MENU-QCN','Give User ability to see the QCN Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Gemba','Give User ability to see the Gemba Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Hardware','Give User ability to see the Hardware Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Scanning','Give User ability to see the Scanning Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Other','Give User ability to see the Other Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-SupplyChain','Give User ability to see the Supply Chain DB'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-Sourcing','Give User ability to see the Sourcing DB'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-Ops','Give User ability to see the Op Performance DB'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-HuddleBoard','Give User ability to see the Huddle Board'
+
+insert into bluebin.BlueBinRoleOperations 
+select sr.RoleID,so.OpID
+from bluebin.BlueBinRoles sr,bluebin.BlueBinOperations so
+where so.OpName like 'MENU%' and so.OpID not in (select OpID from bluebin.BlueBinRoleOperations)
+END
+
+
+
+
+
+
+--2.0
 ALTER TABLE bluebin.BlueBinUser ALTER COLUMN UserLogin varchar(60)
 GO
 ALTER TABLE bluebin.BlueBinUser ALTER COLUMN Email varchar(60)
@@ -110,6 +156,19 @@ if not exists(select * from bluebin.Config where ConfigName = 'TrainingTitle')
 BEGIN
 insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType)
 select 'TrainingTitle','Tech',1,getdate(),'DMS'
+END
+GO
+
+if not exists(select * from bluebin.Config where ConfigName = 'PO_DATE')  
+BEGIN
+insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType)
+select 'PO_DATE','1/1/2015',1,getdate(),'Tableau'
+END
+GO
+
+if not exists(select * from bluebin.Config where ConfigName = 'GLSummaryAccountID')  
+BEGIN
+insert into bluebin.Config select 'GLSummaryAccountID','',1,getdate(),'Tableau'
 END
 GO
 
@@ -310,12 +369,14 @@ CREATE TABLE [bluebin].[Config](
 ;
 insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated)
 VALUES
+('GLSummaryAccountID','','Tableau',1,getdate()),
+('PO_DATE','1/1/2015','Tableau',1,getdate()),
 ('TrainingTitle','Tech','DMS',1,getdate()),
 ('BlueBinHardwareCustomer','Demo','DMS',1,getdate()),
 ('TimeOffset','3','DMS',1,getdate()),
 ('CustomerImage','BlueBin_Logo.png','DMS',1,getdate()),
 ('REQ_LOCATION','BB','Tableau',1,getdate()),
-('Version','1.2.20151211','DMS',1,getdate()),
+('Version','2.2.20160201','DMS',1,getdate()),
 ('PasswordExpires','90','DMS',1,getdate()),
 ('SiteAppURL','BlueBinOperations_Demo','DMS',1,getdate()),
 ('TableaURL','/bluebinanalytics/views/Demo/','Tableau',1,getdate()),
@@ -418,7 +479,17 @@ Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
 ('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
 ('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),
 ('ADMIN-RESOURCES','Give User ability to see the Sub Admin Menu Resources'),
-('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training')
+('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training'),
+('MENU-Dashboard','Give User ability to see the Dashboard Menu'),
+('MENU-QCN','Give User ability to see the QCN Menu'),
+('MENU-Gemba','Give User ability to see the Gemba Menu'),
+('MENU-Hardware','Give User ability to see the Hardware Menu'),
+('MENU-Scanning','Give User ability to see the Scanning Menu'),
+('MENU-Other','Give User ability to see the Other Menu'),
+('MENU-Dashboard-SupplyChain','Give User ability to see the Supply Chain DB'),
+('MENU-Dashboard-Sourcing','Give User ability to see the Sourcing DB'),
+('MENU-Dashboard-Ops','Give User ability to see the Op Performance DB'),
+('MENU-Dashboard-HuddleBoard','Give User ability to see the Huddle Board')
 
 END
 GO
@@ -642,65 +713,6 @@ Print 'Table Adds Complete'
 --Sproc Updates
 --*************************************************************************************************************************************************
 
---*****************************************************
---**************************SPROC**********************
-
-if exists (select * from dbo.sysobjects where id = object_id(N'ssp_BBS') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
-drop procedure ssp_BBS
-GO
-
---exec ssp_BBS 'Demo'
-
-CREATE PROCEDURE ssp_BBS
-@DB varchar(10)
-
---WITH ENCRYPTION
-AS
-BEGIN
-
-
-IF Exists (select * from sys.databases where name = 'UTMC')
-BEGIN
-DECLARE @DBTable Table (Name varchar(20),[id] int)
-declare @SQL nvarchar(max)
-
-set @SQL = 'USE ['+@DB+']
-
-DECLARE @Status Table (Client varchar(20),QueryRunDateTime datetime,MaxReqDate datetime,[SourceUpToDate] varchar(3),MaxSnapshotDate datetime,[DBUpToDate] varchar(3))
-
-insert into @Status
-select 
-	DB_NAME(),
-	getdate(),
-	convert(date,max(CREATION_DATE)) as [MaxReqDate],
-	case when convert(date,max(CREATION_DATE)) > getdate() -2 then ''YES'' else ''NO'' end,
-	db.[MaxSnapshotDate],
-	db.[DBUpToDate?]
-from dbo.REQLINE,
-		(select 
-		DB_NAME() as Client,
-		convert(date,max(LastScannedDate)) as [MaxSnapshotDate],
-		case when convert(date,max(LastScannedDate)) > getdate() -2 then ''YES'' else ''NO'' end as [DBUpToDate?]
-		from bluebin.FactBinSnapshot
-		where LastScannedDate > getdate() -7
-		) db 
-where CREATION_DATE > getdate() -7
-group by 	
-	db.[MaxSnapshotDate],
-	db.[DBUpToDate?]
-
-
-	select * from @Status
-
-	'
-
-EXEC (@SQL)
-
-END
-END
-GO
-grant exec on ssp_BBS to public
-GO
 
 
 
@@ -2663,7 +2675,7 @@ if not exists (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @
 	BEGIN
 	insert into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,RoleID,MustChangePassword,PasswordExpires,[Password],Email,Active,LastUpdated,LastLoginDate,Title)
 	VALUES
-	(@UserLogin,@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),@Email,1,getdate(),getdate(),@Title)
+	(@UserLogin,@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),@UserLogin,1,getdate(),getdate(),@Title)
 	;
 	SET @NewBlueBinUserID = SCOPE_IDENTITY()
 	set @message = 'New User Created - '+ @UserLogin
@@ -2679,7 +2691,7 @@ if not exists (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @
 	
 	if not exists (select BlueBinResourceID from bluebin.BlueBinResource where FirstName = @FirstName and LastName = @LastName)--select * from bluebin.BlueBinResource
 	BEGIN
-	exec sp_InsertBlueBinResource @LastName,@FirstName,@MiddleName,@UserLogin,@Email,'','',@Title
+	exec sp_InsertBlueBinResource @LastName,@FirstName,@MiddleName,@UserLogin,@UserLogin,'','',@Title
 	END
 END
 GO
@@ -3850,7 +3862,129 @@ GO
 
 
 
-Print 'Sproc Add/Updates Complete'
+Print 'Main Sproc Add/Updates Complete'
+
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'ssp_BBSDMSScanning') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure ssp_BBSDMSScanning
+GO
+
+--exec ssp_BBSDMSScanning 'Caldwell'
+
+CREATE PROCEDURE ssp_BBSDMSScanning
+@DB varchar(10)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+
+
+IF Exists (select * from sys.databases where name = @DB)
+BEGIN
+DECLARE @DBTable Table (Name varchar(20),[id] int)
+declare @SQL nvarchar(max)
+
+set @SQL = 'USE ['+@DB+']
+
+DECLARE @Status Table (Client varchar(20),QueryRunDateTime datetime,MaxReqDate datetime,[SourceUpToDate] varchar(3),MaxSnapshotDate datetime,[DBUpToDate] varchar(3))
+
+insert into @Status
+select 
+	DB_NAME(),
+	getdate(),
+	convert(date,max(ScanDateTime)) as [MaxReqDate],
+	case when convert(date,max(ScanDateTime)) > getdate() -2 then ''YES'' else ''NO'' end,
+	db.[MaxSnapshotDate],
+	db.[DBUpToDate?]
+from scan.ScanLine,
+		(select 
+		DB_NAME() as Client,
+		convert(date,max(LastScannedDate)) as [MaxSnapshotDate],
+		case when convert(date,max(LastScannedDate)) > getdate() -2 then ''YES'' else ''NO'' end as [DBUpToDate?]
+		from bluebin.FactBinSnapshot
+		where LastScannedDate > getdate() -7
+		) db 
+where ScanDateTime > getdate() -7
+group by 	
+	db.[MaxSnapshotDate],
+	db.[DBUpToDate?]
+
+
+	select * from @Status
+
+	'
+
+EXEC (@SQL)
+
+END
+END
+GO
+grant exec on ssp_BBSDMSScanning to public
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'ssp_BBS') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure ssp_BBS
+GO
+
+--exec ssp_BBS 'Demo'
+
+CREATE PROCEDURE ssp_BBS
+@DB varchar(10)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+
+
+IF Exists (select * from sys.databases where name = @DB)
+BEGIN
+DECLARE @DBTable Table (Name varchar(20),[id] int)
+declare @SQL nvarchar(max)
+
+set @SQL = 'USE ['+@DB+']
+
+DECLARE @Status Table (Client varchar(20),QueryRunDateTime datetime,MaxReqDate datetime,[SourceUpToDate] varchar(3),MaxSnapshotDate datetime,[DBUpToDate] varchar(3))
+
+insert into @Status
+select 
+	DB_NAME(),
+	getdate(),
+	convert(date,max(CREATION_DATE)) as [MaxReqDate],
+	case when convert(date,max(CREATION_DATE)) > getdate() -2 then ''YES'' else ''NO'' end,
+	db.[MaxSnapshotDate],
+	db.[DBUpToDate?]
+from dbo.REQLINE,
+		(select 
+		DB_NAME() as Client,
+		convert(date,max(LastScannedDate)) as [MaxSnapshotDate],
+		case when convert(date,max(LastScannedDate)) > getdate() -2 then ''YES'' else ''NO'' end as [DBUpToDate?]
+		from bluebin.FactBinSnapshot
+		where LastScannedDate > getdate() -7
+		) db 
+where CREATION_DATE > getdate() -7
+group by 	
+	db.[MaxSnapshotDate],
+	db.[DBUpToDate?]
+
+
+	select * from @Status
+
+	'
+
+EXEC (@SQL)
+
+END
+END
+GO
+grant exec on ssp_BBS to public
+GO
+
+Print 'SSP Sproc Add/Updates Complete'
 --*************************************************************************************************************************************************
 --Grant Exec
 --*************************************************************************************************************************************************

@@ -2,30 +2,34 @@ if exists (select * from dbo.sysobjects where id = object_id(N'tb_WarehouseSnaps
 drop procedure tb_WarehouseSnapshot
 GO
 
---exec tb_ItemLocator
-
+--exec tb_WarehouseSnapshot
 CREATE PROCEDURE tb_WarehouseSnapshot
 
 --WITH ENCRYPTION
 AS
 BEGIN
 SET NOCOUNT ON
-
 SELECT 
+	--count(ITEM),
 	SnapshotDate,
 	SUM(SOH * UnitCost) as DollarsOnHand,
 	LocationID,
-	LocationName
-FROM   bluebin.FactWarehouseSnapshot a
-INNER JOIN bluebin.DimLocation b
-ON a.LocationKey = b.LocationKey
+	LocationID as LocationName
+FROM bluebin.FactWarehouseSnapshot a
+WHERE SOH > 0
 GROUP BY
 	SnapshotDate,
-	LocationID,
-	LocationName
+	LocationID 
+
+
 END
 GO
 grant exec on tb_WarehouseSnapshot to public
 GO
+
+
+
+
+
 
 

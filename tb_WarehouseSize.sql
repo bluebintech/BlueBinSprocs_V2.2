@@ -2,7 +2,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'tb_WarehouseSize'
 drop procedure tb_WarehouseSize
 GO
 
---exec tb_ItemLocator
+--exec tb_WarehouseSize
 
 CREATE PROCEDURE tb_WarehouseSize
 
@@ -25,8 +25,8 @@ SELECT
        a.ReorderPoint,
        a.UnitCost,
 	   c.LastPODate,
-	   a.StockUOM as UOM,
-       Sum(CASE
+	   a.StockUOM as UOM
+       ,Sum(CASE
              WHEN TRANS_DATE >= Dateadd(YEAR, Datediff(YEAR, 0, Dateadd(YEAR, -1, Getdate())), 0)
                   AND TRANS_DATE <= Dateadd(YEAR, -1, Getdate()) THEN b.QUANTITY * -1
              ELSE 0
@@ -36,12 +36,11 @@ SELECT
              ELSE 0
            END) / Month(Getdate()) AS CYYTDIssueQty
 FROM   bluebin.DimWarehouseItem a
-       INNER JOIN ICTRANS b
-               ON a.ItemID = b.ITEM
-			   INNER JOIN bluebin.DimItem c
+       LEFT JOIN ICTRANS b
+               ON ltrim(rtrim(a.ItemID)) = ltrim(rtrim(ITEM)) 
+		LEFT JOIN bluebin.DimItem c
 			   ON a.ItemKey = c.ItemKey
-WHERE  b.DOC_TYPE = 'IS'
-       AND Year(TRANS_DATE) >= Year(Getdate()) - 1
+WHERE  SOHQty > 0 --b.DOC_TYPE = 'IS' and Year(b.TRANS_DATE) >= Year(Getdate()) - 1
 GROUP  BY a.LocationID,
 			a.LocationName,
 			a.ItemID,

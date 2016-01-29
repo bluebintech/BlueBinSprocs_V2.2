@@ -1,3 +1,5 @@
+
+
 IF EXISTS ( SELECT  *
             FROM    sys.objects
             WHERE   object_id = OBJECT_ID(N'tb_Sourcing')
@@ -7,7 +9,7 @@ DROP PROCEDURE  tb_Sourcing
 GO
 
 CREATE PROCEDURE	tb_Sourcing
---exec tb_Sourcing  select * from tableau.Sourcing
+--exec tb_Sourcing  select count(*) from tableau.Sourcing where PODate >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE')
 AS
 
 /********************************		DROP Sourcing		**********************************/
@@ -52,10 +54,11 @@ SELECT a.COMPANY,
        c.INVOICE_AMT
 INTO   #tmpPOLines
 FROM   POLINE a
-       LEFT JOIN PURCHORDER b
+       INNER JOIN PURCHORDER b
               ON a.PO_NUMBER = b.PO_NUMBER
                  AND a.COMPANY = b.COMPANY
                  AND a.PO_CODE = b.PO_CODE
+				 AND a.PO_RELEASE = b.PO_RELEASE
        LEFT JOIN (SELECT PO_NUMBER,
                          LINE_NBR,
                          Sum(TOT_DIST_AMT) AS INVOICE_AMT
@@ -69,8 +72,12 @@ FROM   POLINE a
                  AND a.PO_NUMBER = d.PO_NUMBER
                  AND a.LINE_NBR = d.LINE_NBR
                  AND a.PO_CODE = d.PO_CODE
-WHERE  b.PO_DATE >= '1/1/2014'
+				 AND a.PO_RELEASE = d.PO_RELEASE
+WHERE  b.PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE') 
+		--AND b.PO_RELEASE = 0
        AND a.CXL_QTY = 0; 
+
+
 
 --#tmpMMDIST
 SELECT DOC_NUMBER    AS PO_NUMBER,
@@ -86,7 +93,7 @@ WHERE  SYSTEM_CD = 'PO'
        AND DOC_TYPE = 'PT'
        AND DOC_NUMBER IN (SELECT PO_NUMBER
                           FROM   PURCHORDER
-                          WHERE  PO_DATE >= '1/1/2014'); 
+                          WHERE  PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE')); 
 
 --#tmpPOStatus
 SELECT Row_number()
@@ -179,7 +186,6 @@ SELECT *,
          ELSE 0
        END AS Late
 INTO   tableau.Sourcing 
-		
 FROM   #tmpPOs
 LEFT JOIN bluebin.DimLocation dl on PurchaseLocation = dl.LocationID
 

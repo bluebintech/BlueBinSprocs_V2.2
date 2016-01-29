@@ -12,7 +12,7 @@ AS
 BEGIN
 
 
-IF Exists (select * from sys.databases where name = 'UTMC')
+IF Exists (select * from sys.databases where name = @DB)
 BEGIN
 DECLARE @DBTable Table (Name varchar(20),[id] int)
 declare @SQL nvarchar(max)
