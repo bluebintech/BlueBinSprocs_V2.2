@@ -2,7 +2,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectConfig')
 drop procedure sp_SelectConfig
 GO
 
---exec sp_EditConfig 'TEST'
+--exec sp_SelectConfig
 
 CREATE PROCEDURE sp_SelectConfig
 
@@ -20,7 +20,8 @@ SET NOCOUNT ON
 		Else 'No' 
 		end as ActiveName,
 	Active,
-	LastUpdated 
+	LastUpdated,
+	[Description]
 	
 	FROM bluebin.[Config]
 	order by ConfigType,ConfigName

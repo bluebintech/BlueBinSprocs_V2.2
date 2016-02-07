@@ -31,33 +31,34 @@ CREATE TABLE [bluebin].[Config](
 	[ConfigValue] varchar (50) NOT NULL,
     [Active] int not null,
 	[LastUpdated] datetime not null,
-	[ConfigType] varchar(50)
+	[ConfigType] varchar(50) not null,
+	[Description] varchar(255)
 )
 
-insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated)
+insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated,[Description])
 VALUES
-('GLSummaryAccountID','','Tableau',1,getdate()),
-('PO_DATE','1/1/2015','Tableau',1,getdate()),
-('TrainingTitle','Tech','DMS',1,getdate()),
-('BlueBinHardwareCustomer','Demo','DMS',1,getdate()),
-('TimeOffset','3','DMS',1,getdate()),
-('CustomerImage','BlueBin_Logo.png','DMS',1,getdate()),
-('REQ_LOCATION','BB','Tableau',1,getdate()),
-('Version','1.2.20151211','DMS',1,getdate()),
-('PasswordExpires','90','DMS',1,getdate()),
-('SiteAppURL','BlueBinOperations_Demo','DMS',1,getdate()),
-('TableaURL','/bluebinanalytics/views/Demo/','Tableau',1,getdate()),
-('LOCATION','STORE','Tableau',1,getdate()),
-('MENU-Dashboard','1','DMS',1,getdate()),
-('MENU-Dashboard-HuddleBoard','1','DMS',1,getdate()),
-('MENU-Dashboard-Sourcing','1','DMS',1,getdate()),
-('MENU-Dashboard-SupplyChain','1','DMS',1,getdate()),
-('MENU-Dashboard-Ops','1','DMS',1,getdate()),
-('MENU-QCN','1','DMS',1,getdate()),
-('MENU-Gemba','1','DMS',1,getdate()),
-('MENU-Hardware','1','DMS',1,getdate()),
-('MENU-Scanning','1','DMS',1,getdate()),
-('MENU-Other','1','DMS',1,getdate())
+('GLSummaryAccountID','','Tableau',1,getdate(),''),
+('PO_DATE','1/1/2015','Tableau',1,getdate(),''),
+('TrainingTitle','Tech','DMS',1,getdate(),''),
+('BlueBinHardwareCustomer','Demo','DMS',1,getdate(),''),
+('TimeOffset','3','DMS',1,getdate(),''),
+('CustomerImage','BlueBin_Logo.png','DMS',1,getdate(),''),
+('REQ_LOCATION','BB','Tableau',1,getdate(),''),
+('Version','1.2.20151211','DMS',1,getdate(),''),
+('PasswordExpires','90','DMS',1,getdate(),''),
+('SiteAppURL','BlueBinOperations_Demo','DMS',1,getdate(),''),
+('TableaURL','/bluebinanalytics/views/Demo/','Tableau',1,getdate(),''),
+('LOCATION','STORE','Tableau',1,getdate(),''),
+('MENU-Dashboard','1','DMS',1,getdate(),''),
+('MENU-Dashboard-HuddleBoard','1','DMS',1,getdate(),''),
+('MENU-Dashboard-Sourcing','1','DMS',1,getdate(),''),
+('MENU-Dashboard-SupplyChain','1','DMS',1,getdate(),''),
+('MENU-Dashboard-Ops','1','DMS',1,getdate(),''),
+('MENU-QCN','1','DMS',1,getdate(),''),
+('MENU-Gemba','1','DMS',1,getdate(),''),
+('MENU-Hardware','1','DMS',1,getdate(),''),
+('MENU-Scanning','1','DMS',1,getdate(),''),
+('MENU-Other','1','DMS',1,getdate(),'')
 
 END
 GO
@@ -118,7 +119,7 @@ CREATE TABLE [bluebin].[BlueBinOperations](
 	[Description] varchar (255) NULL
 )
 
-Insert into bluebin.BlueBinOperations (OpName,[Desription]) VALUES
+Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
 ('ADMIN-MENU','Give User ability to see the Main Admin Menu'),
 ('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
 ('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),
@@ -252,6 +253,56 @@ where BlueBinResourceID not in (select BlueBinResourceID from bluebin.BlueBinTra
 END
 GO
 
+if not exists (select * from sys.tables where name = 'Document')
+BEGIN
+CREATE TABLE [bluebin].[Document](
+	[DocumentID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[DocumentName] varchar(100) not null,
+	[DocumentType] varchar(30) not NULL,
+	[DocumentSource] varchar(100) not NULL,
+	--[Document] varbinary(max) NOT NULL,
+	[Document] varchar(max) NOT NULL,
+	[Active] int not null,
+	[DateCreated] DateTime not null,
+	[LastUpdated] DateTime not null
+
+)
+;
+if not exists (select * from bluebin.Document where DocumentSource = 'SOPs')
+BEGIN  
+insert into bluebin.Document (DocumentName,DocumentType,DocumentSource,Document,Active,DateCreated,LastUpdated) VALUES
+('3000 - Replenishing BlueBin Technology Nodes','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3000 - Replenishing BlueBin Technology Nodes.pdf',1,getdate(),getdate()),
+('3001 - BlueBin Stage Operations','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3001 - BlueBin Stage Operations.pdf',1,getdate(),getdate()),
+('3002 - Filling BBT Orders - Art of Bin Fill','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3002 - Filling BBT Orders - Art of Bin Fill.pdf',1,getdate(),getdate()),
+('3003 - Managing BlueBin Stock-Outs','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3003 - Managing BlueBin Stock-Outs.pdf',1,getdate(),getdate()),
+('3004 - BlueBin Kanban & Stage Maintenance','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3004 - BlueBin Kanban & Stage Maintenance.pdf',1,getdate(),getdate()),
+('3005 - BlueBin Stage Audit Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3005 - BlueBin Stage Audit Process.pdf',1,getdate(),getdate()),
+('3006 - Stage Audit Form','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3006 - Stage Audit Form.pdf',1,getdate(),getdate()),
+('3007 - BlueBIn Daily Health Audit Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3007 - BlueBIn Daily Health Audit Process.pdf',1,getdate(),getdate()),
+('3008 - BBT Weekly Health Checklist','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3008 - BBT Weekly Health Checklist.pdf',1,getdate(),getdate()),
+('3009 - BBT Orange Cone Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3009 - BBT Orange Cone Process.pdf',1,getdate(),getdate()),
+('3010 - QCN Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3010 - QCN Process.pdf',1,getdate(),getdate())
+END
+;
+if not exists (select * from bluebin.Document where DocumentSource = 'FormsSignage')
+BEGIN
+insert into bluebin.Document (DocumentName,DocumentType,DocumentSource,Document,Active,DateCreated,LastUpdated) VALUES
+('NODE SIGNAGE - Main','application/pdf','FormsSignage','D:\BlueBinDocuments\'+(select DB_NAME())+'\FormsSignage\NODE SIGNAGE - Main.pdf',1,getdate(),getdate()),
+('QCN Drop','application/pdf','FormsSignage','D:\BlueBinDocuments\'+(select DB_NAME())+'\FormsSignage\QCN Drop.pdf',1,getdate(),getdate()),
+('Sequence Worksheet','application/vnd.ms-excel','FormsSignage','D:\BlueBinDocuments\'+(select DB_NAME())+'\FormsSignage\SEQUENCE WORKSHEET.xlsx',1,getdate(),getdate())
+END
+;
+if not exists (select * from bluebin.Document where DocumentSource = 'BeltCertification')
+BEGIN
+insert into bluebin.Document (DocumentName,DocumentType,DocumentSource,Document,Active,DateCreated,LastUpdated) VALUES
+('Belt Certificate Overview','application/ppsx','BeltCertification','D:\BlueBinDocuments\'+(select DB_NAME())+'\BeltCertification\DMS-CERTIFICATION.ppsx',1,getdate(),getdate())
+END
+;
+END
+GO
+
 SET ANSI_PADDING OFF
 GO
+
+
 

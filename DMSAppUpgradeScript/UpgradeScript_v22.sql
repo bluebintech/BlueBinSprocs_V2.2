@@ -71,51 +71,13 @@ alter table bluebin.BlueBinUser drop column email;
 END
 */
 --2.2
-if exists (select * from bluebin.BlueBinOperations where [Description] is null)
-BEGIN
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Admin Menu' where OpName = 'ADMIN-MENU'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Config' where OpName = 'ADMIN-CONFIG'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Users' where OpName = 'ADMIN-USERS'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Resources' where OpName = 'ADMIN-RESOURCES'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Training' where OpName = 'ADMIN-TRAINING'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Test' where OpName = 'ADMIN-TEST'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Dashboard Menu' where OpName = 'MENU-Dashboard'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the QCN Menu' where OpName = 'MENU-QCN'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Gemba Menu' where OpName = 'MENU-Gemba'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Hardware Menu' where OpName = 'MENU-Hardware'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Scanning Menu' where OpName = 'MENU-Scanning'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Other Menu' where OpName = 'MENU-Other'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Supply Chain DB' where OpName = 'MENU-Dashboard-SupplyChain'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sourcing DB' where OpName = 'MENU-Dashboard-Sourcing'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Op Performance DB' where OpName = 'MENU-Dashboard-Ops'
-Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Huddle Board' where OpName = 'MENU-Dashboard-HuddleBoard'
-END
-
-if not exists (select * from bluebin.BlueBinOperations where [OpName] like 'MENU%')
-BEGIN
-insert into bluebin.BlueBinOperations select 'MENU-Dashboard','Give User ability to see the Dashboard Menu'
-insert into bluebin.BlueBinOperations select 'MENU-QCN','Give User ability to see the QCN Menu'
-insert into bluebin.BlueBinOperations select 'MENU-Gemba','Give User ability to see the Gemba Menu'
-insert into bluebin.BlueBinOperations select 'MENU-Hardware','Give User ability to see the Hardware Menu'
-insert into bluebin.BlueBinOperations select 'MENU-Scanning','Give User ability to see the Scanning Menu'
-insert into bluebin.BlueBinOperations select 'MENU-Other','Give User ability to see the Other Menu'
-insert into bluebin.BlueBinOperations select 'MENU-Dashboard-SupplyChain','Give User ability to see the Supply Chain DB'
-insert into bluebin.BlueBinOperations select 'MENU-Dashboard-Sourcing','Give User ability to see the Sourcing DB'
-insert into bluebin.BlueBinOperations select 'MENU-Dashboard-Ops','Give User ability to see the Op Performance DB'
-insert into bluebin.BlueBinOperations select 'MENU-Dashboard-HuddleBoard','Give User ability to see the Huddle Board'
-
-insert into bluebin.BlueBinRoleOperations 
-select sr.RoleID,so.OpID
-from bluebin.BlueBinRoles sr,bluebin.BlueBinOperations so
-where so.OpName like 'MENU%' and so.OpID not in (select OpID from bluebin.BlueBinRoleOperations)
-END
 
 
 
+--2.2
 
-
-
---2.0
+--*******************
+--User and Operations
 ALTER TABLE bluebin.BlueBinUser ALTER COLUMN UserLogin varchar(60)
 GO
 ALTER TABLE bluebin.BlueBinUser ALTER COLUMN Email varchar(60)
@@ -139,6 +101,113 @@ ALTER TABLE bluebin.BlueBinUser ADD [Title] varchar(50);
 END
 GO
 
+if exists (select * from bluebin.BlueBinOperations where [Description] is null)
+BEGIN
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Admin Menu' where OpName = 'ADMIN-MENU'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Config' where OpName = 'ADMIN-CONFIG'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Users' where OpName = 'ADMIN-USERS'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Resources' where OpName = 'ADMIN-RESOURCES'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Training' where OpName = 'ADMIN-TRAINING'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sub Admin Menu Test' where OpName = 'ADMIN-TEST'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Dashboard Menu' where OpName = 'MENU-Dashboard'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the QCN Menu' where OpName = 'MENU-QCN'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Gemba Menu' where OpName = 'MENU-Gemba'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Hardware Menu' where OpName = 'MENU-Hardware'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Scanning Menu' where OpName = 'MENU-Scanning'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Other Menu' where OpName = 'MENU-Other'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Supply Chain DB' where OpName = 'MENU-Dashboard-SupplyChain'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Sourcing DB' where OpName = 'MENU-Dashboard-Sourcing'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Op Performance DB' where OpName = 'MENU-Dashboard-Ops'
+Update bluebin.BlueBinOperations set Description = 'Give User ability to see the Huddle Board' where OpName = 'MENU-Dashboard-HuddleBoard'
+END
+GO
+
+if not exists(select * from bluebin.BlueBinOperations where OpName ='DOCUMENTS-UploadUtility')  
+BEGIN
+Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
+('DOCUMENTS-UploadUtility','Give User ability to see Upload Utility and Upload/Update Documents in Op Procedures')
+
+insert into bluebin.BlueBinRoleOperations 
+select 
+(select RoleID from bluebin.BlueBinRoles where RoleName in ('BlueBinPersonnel')),
+so.OpID
+from bluebin.BlueBinOperations so
+where so.OpName ='DOCUMENTS-UploadUtility' and so.OpID not in 
+		(select OpID from bluebin.BlueBinRoleOperations where RoleID in (select RoleID from bluebin.BlueBinRoles where RoleName in ('BlueBinPersonnel')))
+END
+GO
+
+if not exists(select * from bluebin.BlueBinOperations where OpName like 'ADMIN%')  
+BEGIN
+Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
+('ADMIN-MENU','Give User ability to see the Main Admin Menu'),
+('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
+('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),
+('ADMIN-RESOURCES','Give User ability to see the Sub Admin Menu Resources'),
+('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training')
+END
+GO
+
+if not exists (select * from bluebin.BlueBinOperations where [OpName] like 'MENU%')
+BEGIN
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard','Give User ability to see the Dashboard Menu'
+insert into bluebin.BlueBinOperations select 'MENU-QCN','Give User ability to see the QCN Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Gemba','Give User ability to see the Gemba Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Hardware','Give User ability to see the Hardware Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Scanning','Give User ability to see the Scanning Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Other','Give User ability to see the Other Menu'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-SupplyChain','Give User ability to see the Supply Chain DB'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-Sourcing','Give User ability to see the Sourcing DB'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-Ops','Give User ability to see the Op Performance DB'
+insert into bluebin.BlueBinOperations select 'MENU-Dashboard-HuddleBoard','Give User ability to see the Huddle Board'
+
+insert into bluebin.BlueBinRoleOperations 
+select sr.RoleID,so.OpID
+from bluebin.BlueBinRoles sr,bluebin.BlueBinOperations so
+where so.OpName like 'MENU%' and so.OpID not in (select OpID from bluebin.BlueBinRoleOperations)
+END
+GO
+
+
+--*******************
+--Config Stuff
+
+if not exists(select * from sys.columns where name = 'Description' and object_id = (select object_id from sys.tables where name = 'Config'))
+BEGIN
+ALTER TABLE bluebin.Config ADD [Description] varchar(255);
+END
+GO
+
+if exists(select * from sys.columns where name = 'Description' and object_id = (select object_id from sys.tables where name = 'Config'))
+BEGIN
+update bluebin.Config set [Description] = 'Value in the BlueBinHardware Database for matching invoices. Default=Demo' where ConfigName = 'BlueBinHardwareCustomer'
+update bluebin.Config set [Description] = 'Time offset in hours from the server time for custom interface changing. Default=0' where ConfigName = 'TimeOffset'
+update bluebin.Config set [Description] = 'Linked image on the Front Page.  Should be NameofHospital_Logo.png. Default=BlueBin_Logo.png' where ConfigName = 'CustomerImage'
+update bluebin.Config set [Description] = 'Tableau Setting - REQLINE.REQLOCATION Value that is used for pulling locations in to the Dashboard.  Should be 2 characters.  Default=BB' where ConfigName = 'REQ_LOCATION'
+update bluebin.Config set [Description] = 'Current Version of the Application.  Default=current version' where ConfigName = 'Version'
+update bluebin.Config set [Description] = 'Default value for password expiration when user is created. Default=90' where ConfigName = 'PasswordExpires'
+update bluebin.Config set [Description] = 'Name of the Site app hosted in dms.bluebin.com. Default=Demo' where ConfigName = 'SiteAppURL'
+update bluebin.Config set [Description] = 'Tableau Setting - URL for the Tableau Workbook for the site. Default=/bluebinanalytics/views/DemoV22/' where ConfigName = 'TableauURL'
+update bluebin.Config set [Description] = 'Tableau Setting - Default setting for the Warehouse for the client in their ERP. Default=STORE' where ConfigName = 'LOCATION'
+update bluebin.Config set [Description] = 'Tableau Setting - Will limit the return of rows to one company for ERPs. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'SingleCompany'
+update bluebin.Config set [Description] = 'Title that will auto create from Resources an entry in the Training table. Default=Tech' where ConfigName = 'TrainingTitle'
+update bluebin.Config set [Description] = 'Dashboard Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard'
+update bluebin.Config set [Description] = 'QCN Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-QCN'
+update bluebin.Config set [Description] = 'Gemba Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Gemba'
+update bluebin.Config set [Description] = 'Hardware Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Hardware'
+update bluebin.Config set [Description] = 'Scanning Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Scanning'
+update bluebin.Config set [Description] = 'Other Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Other'
+update bluebin.Config set [Description] = 'Dashboard Supply Chain Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-SupplyChain'
+update bluebin.Config set [Description] = 'Dashboard Sourcing Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-Sourcing'
+update bluebin.Config set [Description] = 'Dashboard Ops Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-Ops'
+update bluebin.Config set [Description] = 'HuddleBoard Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-HuddleBoard'
+update bluebin.Config set [Description] = 'Tableau Setting - Custom setting to only pull POs from a certain date. Format as MM/DD/YYYY Default=1/1/2015' where ConfigName = 'PO_DATE'
+update bluebin.Config set [Description] = 'Tableau Setting - GLACCOUNT value that can be custom set in Tableu. Default=70' where ConfigName = 'GLSummaryAccountID'
+END
+GO
+
+
+
 if not exists(select * from sys.columns where name = 'ConfigType' and object_id = (select object_id from sys.tables where name = 'Config'))
 BEGIN
 ALTER TABLE bluebin.Config ADD ConfigType varchar(50);
@@ -154,57 +223,49 @@ GO
 
 if not exists(select * from bluebin.Config where ConfigName = 'TrainingTitle')  
 BEGIN
-insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType)
-select 'TrainingTitle','Tech',1,getdate(),'DMS'
+insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType,[Description])
+select 'TrainingTitle','Tech',1,getdate(),'DMS',''
 END
 GO
 
 if not exists(select * from bluebin.Config where ConfigName = 'PO_DATE')  
 BEGIN
-insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType)
-select 'PO_DATE','1/1/2015',1,getdate(),'Tableau'
+insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType,[Description])
+select 'PO_DATE','1/1/2015',1,getdate(),'Tableau',''
 END
 GO
 
 if not exists(select * from bluebin.Config where ConfigName = 'GLSummaryAccountID')  
 BEGIN
-insert into bluebin.Config select 'GLSummaryAccountID','',1,getdate(),'Tableau'
+insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType,[Description])
+select 'GLSummaryAccountID','',1,getdate(),'Tableau',''
 END
 GO
 
 if not exists(select * from bluebin.Config where ConfigName like 'MENU-%')  
 BEGIN
-insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated) VALUES
-('MENU-Dashboard','1','DMS',1,getdate()),
-('MENU-QCN','1','DMS',1,getdate()),
-('MENU-Gemba','1','DMS',1,getdate()),
-('MENU-Hardware','1','DMS',1,getdate()),
-('MENU-Scanning','1','DMS',1,getdate()),
-('MENU-Other','1','DMS',1,getdate())
+insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated,[Description]) VALUES
+('MENU-Dashboard','1','DMS',1,getdate(),''),
+('MENU-QCN','1','DMS',1,getdate(),''),
+('MENU-Gemba','1','DMS',1,getdate(),''),
+('MENU-Hardware','1','DMS',1,getdate(),''),
+('MENU-Scanning','1','DMS',1,getdate(),''),
+('MENU-Other','1','DMS',1,getdate(),'')
 END
 GO
 
 if not exists(select * from bluebin.Config where ConfigName like 'MENU-Dashboard-%')  
 BEGIN
-insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated) VALUES
-('MENU-Dashboard-HuddleBoard','1','DMS',1,getdate()),
-('MENU-Dashboard-SupplyChain','1','DMS',1,getdate()),
-('MENU-Dashboard-Sourcing','1','DMS',1,getdate()),
-('MENU-Dashboard-Ops','1','DMS',1,getdate())
+insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated,[Description]) VALUES
+('MENU-Dashboard-HuddleBoard','1','DMS',1,getdate(),''),
+('MENU-Dashboard-SupplyChain','1','DMS',1,getdate(),''),
+('MENU-Dashboard-Sourcing','1','DMS',1,getdate(),''),
+('MENU-Dashboard-Ops','1','DMS',1,getdate(),'')
 END
 GO
 
 
-if not exists(select * from bluebin.BlueBinOperations where OpName like 'ADMIN%')  
-BEGIN
-Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
-('ADMIN-MENU','Give User ability to see the Main Admin Menu'),
-('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
-('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),
-('ADMIN-RESOURCES','Give User ability to see the Sub Admin Menu Resources'),
-('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training')
-END
-GO
+
 
 Print 'Table Updates Complete'
 --*************************************************************************************************************************************************
@@ -213,6 +274,58 @@ Print 'Table Updates Complete'
 
 --*****************************************************
 --**************************NEWTABLE**********************
+
+if not exists (select * from sys.tables where name = 'Document')
+BEGIN
+CREATE TABLE [bluebin].[Document](
+	[DocumentID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[DocumentName] varchar(100) not null,
+	[DocumentType] varchar(30) not NULL,
+	[DocumentSource] varchar(100) not NULL,
+	--[Document] varbinary(max) NOT NULL,
+	[Document] varchar(max) NOT NULL,
+	[Active] int not null,
+	[DateCreated] DateTime not null,
+	[LastUpdated] DateTime not null
+
+)
+;
+if not exists (select * from bluebin.Document where DocumentSource = 'SOPs')
+BEGIN  
+insert into bluebin.Document (DocumentName,DocumentType,DocumentSource,Document,Active,DateCreated,LastUpdated) VALUES
+('3000 - Replenishing BlueBin Technology Nodes','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3000 - Replenishing BlueBin Technology Nodes.pdf',1,getdate(),getdate()),
+('3001 - BlueBin Stage Operations','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3001 - BlueBin Stage Operations.pdf',1,getdate(),getdate()),
+('3002 - Filling BBT Orders - Art of Bin Fill','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3002 - Filling BBT Orders - Art of Bin Fill.pdf',1,getdate(),getdate()),
+('3003 - Managing BlueBin Stock-Outs','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3003 - Managing BlueBin Stock-Outs.pdf',1,getdate(),getdate()),
+('3004 - BlueBin Kanban & Stage Maintenance','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3004 - BlueBin Kanban & Stage Maintenance.pdf',1,getdate(),getdate()),
+('3005 - BlueBin Stage Audit Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3005 - BlueBin Stage Audit Process.pdf',1,getdate(),getdate()),
+('3006 - Stage Audit Form','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3006 - Stage Audit Form.pdf',1,getdate(),getdate()),
+('3007 - BlueBIn Daily Health Audit Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3007 - BlueBIn Daily Health Audit Process.pdf',1,getdate(),getdate()),
+('3008 - BBT Weekly Health Checklist','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3008 - BBT Weekly Health Checklist.pdf',1,getdate(),getdate()),
+('3009 - BBT Orange Cone Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3009 - BBT Orange Cone Process.pdf',1,getdate(),getdate()),
+('3010 - QCN Process','application/pdf','SOPs','D:\BlueBinDocuments\'+(select DB_NAME())+'\SOPs\3010 - QCN Process.pdf',1,getdate(),getdate())
+END
+;
+if not exists (select * from bluebin.Document where DocumentSource = 'FormsSignage')
+BEGIN
+insert into bluebin.Document (DocumentName,DocumentType,DocumentSource,Document,Active,DateCreated,LastUpdated) VALUES
+('NODE SIGNAGE - Main','application/pdf','FormsSignage','D:\BlueBinDocuments\'+(select DB_NAME())+'\FormsSignage\NODE SIGNAGE - Main.pdf',1,getdate(),getdate()),
+('QCN Drop','application/pdf','FormsSignage','D:\BlueBinDocuments\'+(select DB_NAME())+'\FormsSignage\QCN Drop.pdf',1,getdate(),getdate()),
+('Sequence Worksheet','application/vnd.ms-excel','FormsSignage','D:\BlueBinDocuments\'+(select DB_NAME())+'\FormsSignage\SEQUENCE WORKSHEET.xlsx',1,getdate(),getdate())
+END
+;
+if not exists (select * from bluebin.Document where DocumentSource = 'BeltCertification')
+BEGIN
+insert into bluebin.Document (DocumentName,DocumentType,DocumentSource,Document,Active,DateCreated,LastUpdated) VALUES
+('Belt Certificate Overview','application/ppsx','BeltCertification','D:\BlueBinDocuments\'+(select DB_NAME())+'\BeltCertification\DMS-CERTIFICATION.ppsx',1,getdate(),getdate())
+END
+;
+END
+GO
+
+--*****************************************************
+--**************************NEWTABLE**********************
+
 if not exists (select * from sys.tables where name = 'BlueBinUserOperations')
 BEGIN
 CREATE TABLE [bluebin].[BlueBinUserOperations](
@@ -364,30 +477,59 @@ CREATE TABLE [bluebin].[Config](
 	[ConfigValue] varchar (50) NOT NULL,
     [Active] int not null,
 	[LastUpdated] datetime not null,
-	[ConfigType] varchar(50)
+	[ConfigType] varchar(50) not null,
+	[Description] varchar(255)
 )
-;
-insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated)
+
+insert into bluebin.Config (ConfigName,ConfigValue,ConfigType,Active,LastUpdated,[Description])
 VALUES
-('GLSummaryAccountID','','Tableau',1,getdate()),
-('PO_DATE','1/1/2015','Tableau',1,getdate()),
-('TrainingTitle','Tech','DMS',1,getdate()),
-('BlueBinHardwareCustomer','Demo','DMS',1,getdate()),
-('TimeOffset','3','DMS',1,getdate()),
-('CustomerImage','BlueBin_Logo.png','DMS',1,getdate()),
-('REQ_LOCATION','BB','Tableau',1,getdate()),
-('Version','2.2.20160201','DMS',1,getdate()),
-('PasswordExpires','90','DMS',1,getdate()),
-('SiteAppURL','BlueBinOperations_Demo','DMS',1,getdate()),
-('TableaURL','/bluebinanalytics/views/Demo/','Tableau',1,getdate()),
-('LOCATION','STORE','Tableau',1,getdate()),
-('MENU-Dashboard','1','DMS',1,getdate()),
-('MENU-QCN','1','DMS',1,getdate()),
-('MENU-Gemba','1','DMS',1,getdate()),
-('MENU-Hardware','1','DMS',1,getdate()),
-('MENU-Scanning','1','DMS',1,getdate()),
-('MENU-Other','1','DMS',1,getdate())
-;
+('GLSummaryAccountID','','Tableau',1,getdate(),''),
+('PO_DATE','1/1/2015','Tableau',1,getdate(),''),
+('TrainingTitle','Tech','DMS',1,getdate(),''),
+('BlueBinHardwareCustomer','Demo','DMS',1,getdate(),''),
+('TimeOffset','3','DMS',1,getdate(),''),
+('CustomerImage','BlueBin_Logo.png','DMS',1,getdate(),''),
+('REQ_LOCATION','BB','Tableau',1,getdate(),''),
+('Version','1.2.20151211','DMS',1,getdate(),''),
+('PasswordExpires','90','DMS',1,getdate(),''),
+('SiteAppURL','BlueBinOperations_Demo','DMS',1,getdate(),''),
+('TableaURL','/bluebinanalytics/views/Demo/','Tableau',1,getdate(),''),
+('LOCATION','STORE','Tableau',1,getdate(),''),
+('MENU-Dashboard','1','DMS',1,getdate(),''),
+('MENU-Dashboard-HuddleBoard','1','DMS',1,getdate(),''),
+('MENU-Dashboard-Sourcing','1','DMS',1,getdate(),''),
+('MENU-Dashboard-SupplyChain','1','DMS',1,getdate(),''),
+('MENU-Dashboard-Ops','1','DMS',1,getdate(),''),
+('MENU-QCN','1','DMS',1,getdate(),''),
+('MENU-Gemba','1','DMS',1,getdate(),''),
+('MENU-Hardware','1','DMS',1,getdate(),''),
+('MENU-Scanning','1','DMS',1,getdate(),''),
+('MENU-Other','1','DMS',1,getdate(),'')
+
+update bluebin.Config set [Description] = 'Value in the BlueBinHardware Database for matching invoices. Default=Demo' where ConfigName = 'BlueBinHardwareCustomer'
+update bluebin.Config set [Description] = 'Time offset in hours from the server time for custom interface changing. Default=0' where ConfigName = 'TimeOffset'
+update bluebin.Config set [Description] = 'Linked image on the Front Page.  Should be NameofHospital_Logo.png. Default=BlueBin_Logo.png' where ConfigName = 'CustomerImage'
+update bluebin.Config set [Description] = 'Tableau Setting - REQLINE.REQLOCATION Value that is used for pulling locations in to the Dashboard.  Should be 2 characters.  Default=BB' where ConfigName = 'REQ_LOCATION'
+update bluebin.Config set [Description] = 'Current Version of the Application.  Default=current version' where ConfigName = 'Version'
+update bluebin.Config set [Description] = 'Default value for password expiration when user is created. Default=90' where ConfigName = 'PasswordExpires'
+update bluebin.Config set [Description] = 'Name of the Site app hosted in dms.bluebin.com. Default=Demo' where ConfigName = 'SiteAppURL'
+update bluebin.Config set [Description] = 'Tableau Setting - URL for the Tableau Workbook for the site. Default=/bluebinanalytics/views/DemoV22/' where ConfigName = 'TableauURL'
+update bluebin.Config set [Description] = 'Tableau Setting - Default setting for the Warehouse for the client in their ERP. Default=STORE' where ConfigName = 'LOCATION'
+update bluebin.Config set [Description] = 'Tableau Setting - Will limit the return of rows to one company for ERPs. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'SingleCompany'
+update bluebin.Config set [Description] = 'Title that will auto create from Resources an entry in the Training table. Default=Tech' where ConfigName = 'TrainingTitle'
+update bluebin.Config set [Description] = 'Dashboard Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard'
+update bluebin.Config set [Description] = 'QCN Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-QCN'
+update bluebin.Config set [Description] = 'Gemba Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Gemba'
+update bluebin.Config set [Description] = 'Hardware Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Hardware'
+update bluebin.Config set [Description] = 'Scanning Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Scanning'
+update bluebin.Config set [Description] = 'Other Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Other'
+update bluebin.Config set [Description] = 'Dashboard Supply Chain Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-SupplyChain'
+update bluebin.Config set [Description] = 'Dashboard Sourcing Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-Sourcing'
+update bluebin.Config set [Description] = 'Dashboard Ops Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-Ops'
+update bluebin.Config set [Description] = 'HuddleBoard Functionality is available for this client. Default=0 (Boolean 0 is No, 1 is Yes)' where ConfigName = 'MENU-Dashboard-HuddleBoard'
+update bluebin.Config set [Description] = 'Tableau Setting - Custom setting to only pull POs from a certain date. Format as MM/DD/YYYY Default=1/1/2015' where ConfigName = 'PO_DATE'
+update bluebin.Config set [Description] = 'Tableau Setting - GLACCOUNT value that can be custom set in Tableu. Default=70' where ConfigName = 'GLSummaryAccountID'
+
 END
 GO
 
@@ -712,8 +854,185 @@ Print 'Table Adds Complete'
 --*************************************************************************************************************************************************
 --Sproc Updates
 --*************************************************************************************************************************************************
+--*****************************************************
+--**************************SPROC**********************
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertDocument') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertDocument
+GO
+
+--exec sp_InsertDocument 'TestDocument','application/pdf','SOPs','gbutler@bluebin.com','C:\BlueBinDocuments\DemoV22\SOPs\3000 - Replenishing BlueBin Technology Nodes.pdf'
+CREATE PROCEDURE sp_InsertDocument
+@DocumentName varchar(100),
+@DocumentType varchar(30),
+@DocumentSource varchar(100),
+@UserLogin varchar(60),
+@Document varchar(max)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+if not exists (select * from bluebin.Document where DocumentName = @DocumentName and DocumentSource = @DocumentSource)
+BEGIN
+insert into bluebin.[Document] 
+(DocumentName,DocumentType,DocumentSource,[Document],[Active],[DateCreated],[LastUpdated])        
+VALUES 
+(@DocumentName,@DocumentType,@DocumentSource,@Document,1,getdate(),getdate())
+END
+ELSE
+	BEGIN
+	update bluebin.[Document] set Document = @Document, LastUpdated = getdate() where DocumentName = @DocumentName and DocumentSource = @DocumentSource
+	END
+
+Declare @DocumentID int  = SCOPE_IDENTITY()
+declare @Text varchar(60) = 'Insert Document - '+left(@DocumentName,30)
+exec sp_InsertMasterLog @UserLogin,'Documents',@Text,@DocumentID
+
+END
+GO
+grant exec on sp_InsertDocument to appusers
+GO
 
 
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectDocuments') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectDocuments
+GO
+
+--exec sp_SelectDocuments 'gbutler@bluebin.com','FormsSignage'
+CREATE PROCEDURE sp_SelectDocuments
+@UserLogin varchar(60),
+@DocumentSource varchar(20)
+
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+if exists (select * from bluebin.Document where DocumentSource = @DocumentSource)
+BEGIN
+	Select 
+	DocumentID,
+	DocumentName,
+	DocumentType,
+	DocumentSource,
+	Document,
+	Active,
+	DateCreated,
+	LastUpdated
+	from bluebin.[Document]    
+	where 
+	DocumentSource = @DocumentSource
+	order by DocumentName asc
+END
+ELSE
+BEGIN
+Select 
+	0 as DocumentID,
+	'*No Documents Available*' as DocumentName,
+	'' as DocumentType,
+	'' as DocumentSource,
+	'' as Document,
+	'' as Active,
+	'' as DateCreated,
+	'' as LastUpdated
+END
+
+END
+GO
+grant exec on sp_SelectDocuments to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteDocument') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteDocument
+GO
+
+
+--exec sp_DeleteDocument 'gbutler@bluebin.com','1'
+CREATE PROCEDURE sp_DeleteDocument
+@UserLogin varchar(60),
+@DocumentID int
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+delete
+from bluebin.[Document]    
+where 
+DocumentID = @DocumentID
+
+
+END
+GO
+grant exec on sp_DeleteDocument to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectDocumentSingle') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectDocumentSingle
+GO
+
+--exec sp_SelectDocumentSingle 10
+CREATE PROCEDURE sp_SelectDocumentSingle
+@DocumentID int
+
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+select DocumentName, Document, DocumentType from bluebin.Document where DocumentID=@DocumentID
+
+
+END
+GO
+grant exec on sp_SelectDocumentSingle to appusers
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectSingleConfig') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectSingleConfig
+GO
+
+--exec sp_SelectSingleConfig 'SiteAppURL'
+
+CREATE PROCEDURE sp_SelectSingleConfig
+@ConfigName varchar(30)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+	SELECT 
+	ConfigValue
+	
+	FROM bluebin.[Config]
+	where ConfigName = @ConfigName and Active = 1
+
+END
+GO
+grant exec on sp_SelectSingleConfig to appusers
+GO
 
 
 --*****************************************************
@@ -812,6 +1131,7 @@ GO
 
 --exec sp_SelectRoleOperations
 CREATE PROCEDURE sp_SelectRoleOperations
+@RoleName varchar(50)
 
 --WITH ENCRYPTION
 AS
@@ -825,6 +1145,7 @@ bbo.OpName
 from bluebin.BlueBinRoleOperations bbro
 inner join bluebin.BlueBinRoles bbr on bbro.RoleID = bbr.RoleID
 inner join bluebin.BlueBinOperations bbo on bbro.OpID = bbo.OpID
+where bbr.RoleName like '%' + @RoleName + '%'
 order by bbr.RoleName,bbo.OpName
 
 END
@@ -894,7 +1215,7 @@ GO
 
 
 CREATE PROCEDURE sp_SelectOperations
-
+@OpName varchar(50)
 
 
 --WITH ENCRYPTION
@@ -903,13 +1224,13 @@ BEGIN
 SET NOCOUNT ON
 Select OpID,OpName,
 isnull([Description],'') as [Description] from bluebin.BlueBinOperations
+where OpName like '%' + @OpName + '%'
 order by OpName
 
 END
 GO
 grant exec on sp_SelectOperations to appusers
 GO
-
 --*****************************************************
 --**************************SPROC**********************
 
@@ -2183,7 +2504,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectConfig')
 drop procedure sp_SelectConfig
 GO
 
---exec sp_EditConfig 'TEST'
+--exec sp_SelectConfig
 
 CREATE PROCEDURE sp_SelectConfig
 
@@ -2201,7 +2522,8 @@ SET NOCOUNT ON
 		Else 'No' 
 		end as ActiveName,
 	Active,
-	LastUpdated 
+	LastUpdated,
+	[Description]
 	
 	FROM bluebin.[Config]
 	order by ConfigType,ConfigName
@@ -2833,9 +3155,9 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectRoles') 
 drop procedure sp_SelectRoles
 GO
 
-
+--exec sp_SelectRoles 'Blue'
 CREATE PROCEDURE sp_SelectRoles
-
+@RoleName varchar(50)
 
 
 --WITH ENCRYPTION
@@ -2843,13 +3165,13 @@ AS
 BEGIN
 SET NOCOUNT ON
 Select RoleID,RoleName from bluebin.BlueBinRoles
+where RoleName like '%' + @RoleName + '%'
 order by RoleName
 
 END
 GO
 grant exec on sp_SelectRoles to appusers
 GO
-
 
 
 --*****************************************************

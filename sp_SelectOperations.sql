@@ -4,7 +4,7 @@ GO
 
 
 CREATE PROCEDURE sp_SelectOperations
-
+@OpName varchar(50)
 
 
 --WITH ENCRYPTION
@@ -13,6 +13,7 @@ BEGIN
 SET NOCOUNT ON
 Select OpID,OpName,
 isnull([Description],'') as [Description] from bluebin.BlueBinOperations
+where OpName like '%' + @OpName + '%'
 order by OpName
 
 END
