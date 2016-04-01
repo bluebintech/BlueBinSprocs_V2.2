@@ -19,7 +19,7 @@ from bluebin.[Image]
 where 
 (ImageSourceID = @GembaAuditNodeID and ImageSource like 'GembaAuditNode%') 
 or 
-(ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH)))))
+(ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH)))))
 order by DateCreated desc
 
 

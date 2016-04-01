@@ -54,7 +54,7 @@ WHERE  ITEM_TYPE IN ( 'I', 'N' )
                     FROM   ITEMLOC a INNER JOIN bluebin.DimLocation b ON a.LOCATION = b.LocationID
 WHERE  b.BlueBinFlag = 1)
 
-SELECT ITEMLOC.ITEM,
+SELECT distinct ITEMLOC.ITEM,
        ITEMLOC.GL_CATEGORY,
        ICCATEGORY.ISS_ACCOUNT
 INTO   #ItemAccounts
@@ -62,13 +62,18 @@ FROM   ITEMLOC
        LEFT JOIN ICCATEGORY
               ON ITEMLOC.GL_CATEGORY = ICCATEGORY.GL_CATEGORY
                  AND ITEMLOC.LOCATION = ICCATEGORY.LOCATION
-WHERE  ITEMLOC.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+WHERE  ITEMLOC.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
 
-SELECT ITEM,
+SELECT distinct ITEM,
        LAST_ISS_COST
 INTO   #ItemStore
 FROM   ITEMLOC
 WHERE  LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+
+SELECT distinct ITEM,CONSIGNMENT_FL 
+INTO #Consignment
+FROM ITEMMAST
+WHERE ITEM in (select ITEM from ITEMLOC where LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION'))
 
 
 /***********************************		CREATE	DimBin		***********************************/
@@ -97,12 +102,13 @@ SELECT Row_number()
            COALESCE(COALESCE(#ItemReqs.UNIT_COST, #ItemOrders.ENT_UNIT_CST), #ItemStore.LAST_ISS_COST) AS BinCurrentCost,
            CASE
              WHEN ltrim(rtrim(ITEMLOC.USER_FIELD1)) = 'Consignment' THEN 'Y'
+			 WHEN UPPER(ltrim(rtrim(ITEMLOC.USER_FIELD1))) = 'CONSIGNMENT' OR #Consignment.CONSIGNMENT_FL = 'Y'  THEN 'Y'
              ELSE 'N'
            END                                                                                        AS BinConsignmentFlag,
            #ItemAccounts.ISS_ACCOUNT                                                                  AS BinGLAccount,
 		   'Awaiting Updated Status'																							AS BinCurrentStatus
     INTO   bluebin.DimBin
-    FROM   ITEMLOC
+    FROM   ITEMLOC  
            INNER JOIN bluebin.DimLocation
                    ON ITEMLOC.LOCATION = DimLocation.LocationID
 				   AND ITEMLOC.COMPANY = DimLocation.LocationFacility			   
@@ -120,7 +126,10 @@ SELECT Row_number()
                   ON ITEMLOC.ITEM = #ItemAccounts.ITEM
            LEFT JOIN #ItemStore
                   ON ITEMLOC.ITEM = #ItemStore.ITEM
+		   LEFT JOIN #Consignment
+                  ON ITEMLOC.ITEM = #Consignment.ITEM
 	WHERE DimLocation.BlueBinFlag = 1
+
 
 
 /*****************************************		DROP Temp Tables	**************************************/
@@ -130,9 +139,12 @@ DROP TABLE #ItemReqs
 DROP TABLE #ItemOrders
 DROP TABLE #ItemAccounts
 DROP TABLE #ItemStore
+DROP TABLE #Consignment
 
 GO
 
 UPDATE etl.JobSteps
 SET LastModifiedDate = GETDATE()
 WHERE StepName = 'DimBin'
+
+

@@ -11,7 +11,7 @@ AS
 BEGIN
 SET NOCOUNT ON;
 --Select RoleName from bluebin.BlueBinRoles
---where RoleID in (select RoleID from bluebin.BlueBinUser where UserLogin = @UserLogin)
+--where RoleID in (select RoleID from bluebin.BlueBinUser where LOWER(UserLogin) = @UserLogin)
 
 declare @UserOp as Table (OpName varchar(50))
 
@@ -21,9 +21,9 @@ Distinct
 OpName 
 from bluebin.BlueBinOperations
 where 
-OpID in (select OpID from bluebin.BlueBinUserOperations where BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))
+OpID in (select OpID from bluebin.BlueBinUserOperations where BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))
 or
-OpID in (select OpID from bluebin.BlueBinRoleOperations where RoleID in (select RoleID from bluebin.BlueBinUser where UserLogin = @UserLogin))
+OpID in (select OpID from bluebin.BlueBinRoleOperations where RoleID in (select RoleID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))
 
 
 if exists(select * from @UserOp where OpName like '%' + @OpName + '%')

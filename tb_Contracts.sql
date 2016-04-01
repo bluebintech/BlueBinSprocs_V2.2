@@ -32,18 +32,20 @@ SELECT Date,
        HOLD_FLAG     AS HoldFlag,
        EFFECTIVE_DT  AS EffectiveDate,
        EXPIRE_DT     AS ExpireDate
-INTO   tableau.Contracts
+--INTO   tableau.Contracts
 FROM   bluebin.DimDate
        LEFT JOIN POVAGRMTLN a
               ON EXPIRE_DT = Date 
 		LEFT JOIN APVENMAST b ON a.VENDOR = b.VENDOR
 		LEFT JOIN ITEMMAST c ON a.ITEM = c.ITEM
-
+		select EFFECTIVE_DT,count(*) from POVAGRMTLN group by EFFECTIVE_DT
 GO
 
 UPDATE etl.JobSteps
 SET LastModifiedDate = GETDATE()
 WHERE StepName = 'Contracts'
+
+select top 100* from tableau.Sourcing where VendorName is null
 
 GO
 

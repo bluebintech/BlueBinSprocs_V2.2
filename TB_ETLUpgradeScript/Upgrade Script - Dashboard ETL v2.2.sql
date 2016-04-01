@@ -1,6 +1,10 @@
 /*
 Upgrade Script to copy in the etl_ and tb_ sprocs used in both the daily etl and to populate data sources in the Tableau WOrkbooks
 20151211 - Created By John Ratte
+20160115 - Updated by Gery Butler
+20160211 - Updated by Gery Butler
+20160229 - Updated by Gery Butler
+20160315 - Updated by Gery Butler
 
 */
 
@@ -18,6 +22,7 @@ GO
 
 SET NOCOUNT ON
 GO
+
 
 /*********************************************************************
 --etl schema
@@ -47,7 +52,7 @@ CREATE TABLE [bluebin].[DimItem](
 	[ItemVendor] [char](30) NULL,
 	[ItemVendorNumber] [char](9) NULL,
 	[LastPODate] [datetime] NULL,
-	[StockLocation] [char](7) NULL,
+	[StockLocation] [char](10) NULL,
 	[VendorItemNumber] [char](32) NULL,
 	[StockUOM] [char](4) NOT NULL,
 	[BuyUOM] [char](4) NULL,
@@ -116,8 +121,9 @@ CREATE TABLE [etl].[JobSteps](
 	[ActiveFlag] [int] NOT NULL,
 	[LastModifiedDate] [datetime] NULL
 ) ON [PRIMARY]
-;  select * from etl.JobSteps 
+;  
 insert into etl.JobSteps (StepNumber,StepName,StepProcedure,StepTable,ActiveFlag,LastModifiedDate) VALUES
+
 ('1','DimItem','etl_DimItem','bluebin.DimItem',0,getdate()),
 ('2','DimLocation','etl_DimLocation','bluebin.DimLocation',0,getdate()),
 ('3','DimDate','etl_DimDate','bluebin.DimDate',0,getdate()),
@@ -125,13 +131,15 @@ insert into etl.JobSteps (StepNumber,StepName,StepProcedure,StepTable,ActiveFlag
 ('5','DimBin','etl_DimBin','bluebin.DimBin',0,getdate()),
 ('6','FactScan','etl_FactScan','bluebin.FactScan',0,getdate()),
 ('7','FactBinSnapshot','etl_FactBinSnapshot','bluebin.FactBinSnapshot',0,getdate()),
+('8','Update Bin Status','etl_UpdateBinStatus','bluebin.DimBin',0,getdate()),
 ('9','FactIssue','etl_FactIssue','bluebin.FactIssue',0,getdate()),
 ('10','FactWarehouseSnapshot','etl_FactWarehouseSnapshot','bluebin.FactWarehouseSnapshot',0,getdate()),
 ('11','Kanban','tb_Kanban','tableau.Kanban',0,getdate()),
 ('12','Sourcing','tb_Sourcing','tableau.Sourcing',0,getdate()),
 ('13','Contracts','tb_Contracts','tableau.Contracts',0,getdate()),
-('8','Update Bin Status','etl_UpdateBinStatus','bluebin.DimBin',0,getdate()),
-('14','Warehouse Item','etl_DimWarehouseItem','bluebin.DimWarehouseItem',0,getdate())
+('14','Warehouse Item','etl_DimWarehouseItem','bluebin.DimWarehouseItem',0,getdate()),
+('15','DimFacility','etl_DimFacility','bluebin.DimFacility',0,getdate()),
+('16','BlueBinParMaster','etl_BlueBinParMaster','bluebin.BlueBinParMaster',0,getdate())
 END
 GO
 
@@ -167,12 +175,22 @@ CREATE TABLE [etl].[JobDetails](
 END
 GO
 
+/****** Object:  Table [bluebin].[DimFacility]    Script Date: 12/11/2015 2:43:36 PM ******/
+if not exists (select * from sys.tables where name = 'DimFacility')
+BEGIN
+CREATE TABLE [bluebin].[DimFacility](
+	[FacilityID] smallint NOT NULL,
+	[FacilityName] varchar (255) NOT NULL
+) 
+END
+GO
+
 
 /****** Object:  Table [bluebin].[DimWarehouseItem]    Script Date: 12/11/2015 2:43:36 PM ******/
 if not exists (select * from sys.tables where name = 'DimWarehouseItem')
 BEGIN
 CREATE TABLE [bluebin].[DimWarehouseItem](
-	[LocationID] [char](5) NULL,
+	[LocationID] [varchar](10) NULL,
 	[LocationName] [char](30) NULL,
 	[ItemKey] [bigint] NULL,
 	[ItemID] [char](32) NOT NULL,
@@ -182,7 +200,7 @@ CREATE TABLE [bluebin].[DimWarehouseItem](
 	[ItemManufacturerNumber] [char](35) NOT NULL,
 	[ItemVendor] [char](30) NULL,
 	[ItemVendorNumber] [char](9) NULL,
-	[StockLocation] [char](7) NOT NULL,
+	[StockLocation] [char](10) NOT NULL,
 	[SOHQty] [decimal](13, 4) NOT NULL,
 	[ReorderQty] [decimal](13, 4) NOT NULL,
 	[ReorderPoint] [decimal](13, 4) NOT NULL,
@@ -204,6 +222,7 @@ GO
 /*********************************************************************
 --etl sprocs
 *********************************************************************/
+
 
 /******************************************
 
@@ -241,15 +260,45 @@ END Catch
 
 /**************		CREATE Temp Tables			*******************/
 
-
-SELECT ITEM,
-       USER_FIELD3 AS ClinicalDescription
+SELECT ITEM,max(ClinicalDescription) as ClinicalDescription
 INTO   #ClinicalDescriptions
-FROM   ITEMLOC
-WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
-       AND Len(Ltrim(USER_FIELD3)) > 0
+FROM
+(
+SELECT 
+	a.ITEM,
+	case 
+		when b.ClinicalDescription is null or b.ClinicalDescription = ''  then
+		case
+			when a.USER_FIELD3 is null or a.USER_FIELD3 = ''  then
+			case	
+				when a.USER_FIELD1 is null or a.USER_FIELD1 = '' then '*NEEDS*' 
+			else a.USER_FIELD1 end
+		else a.USER_FIELD3 end
+	else b.ClinicalDescription		
+		end	as ClinicalDescription
 
-SELECT ITEM,
+FROM 
+(SELECT 
+	ITEM,
+	USER_FIELD1,
+	USER_FIELD3
+FROM ITEMLOC a 
+INNER JOIN RQLOC b ON a.LOCATION = b.REQ_LOCATION 
+WHERE LEFT(REQ_LOCATION, 2) IN (SELECT [ConfigValue] FROM   [bluebin].[Config] WHERE  [ConfigName] = 'REQ_LOCATION' AND Active = 1)) a
+LEFT JOIN 
+(SELECT 
+	distinct ITEM, 
+	USER_FIELD3 as ClinicalDescription
+FROM ITEMLOC 
+WHERE LOCATION IN (SELECT [ConfigValue] FROM [bluebin].[Config] WHERE  [ConfigName] = 'LOCATION' AND Active = 1) AND LEN(LTRIM(USER_FIELD3)) > 0
+) b
+ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(b.ITEM))
+--WHERE a.ITEM = '53353'
+) a
+Group by ITEM
+	  
+
+SELECT distinct ITEM,
        Max(PO_DATE) AS LAST_PO_DATE
 INTO   #LastPO
 FROM   POLINE a
@@ -257,15 +306,18 @@ FROM   POLINE a
                ON a.PO_NUMBER = b.PO_NUMBER
                   AND a.COMPANY = b.COMPANY
                   AND a.PO_CODE = b.PO_CODE
+			   
 GROUP  BY ITEM
 
-SELECT ITEM,
+
+SELECT distinct ITEM,
        PREFER_BIN
 INTO   #StockLocations
 FROM   ITEMLOC
-WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
 
-SELECT a.ITEM,
+
+SELECT distinct  a.ITEM,
        a.VENDOR,
        a.VEN_ITEM,
        a.UOM,
@@ -283,12 +335,13 @@ FROM   POVAGRMTLN a
                   AND a.EFFECTIVE_DT = b.EFFECTIVE_DT
                   AND a.EXPIRE_DT = b.EXPIRE_DT
 				  AND a.LINE_NBR = b.LINE_NBR
-WHERE  a.HOLD_FLAG = 'N'
+WHERE  a.HOLD_FLAG = 'N' 
 
 
 
 
 /*********************		CREATE DimItem		**************************************/
+                      
 
 
 SELECT Row_number()
@@ -296,7 +349,7 @@ SELECT Row_number()
            ORDER BY a.ITEM)                AS ItemKey,
        a.ITEM                              AS ItemID,
        a.DESCRIPTION                       AS ItemDescription,
-	   a.DESCRIPTION2					AS ItemDescription2,
+	   a.DESCRIPTION2					   AS ItemDescription2,
        e.ClinicalDescription               AS ItemClinicalDescription,
        a.ACTIVE_STATUS                     AS ActiveStatus,
        a.MANUF_NBR                         AS ItemManufacturer, --b.DESCRIPTION
@@ -311,25 +364,24 @@ SELECT Row_number()
        CONVERT(VARCHAR, Cast(h.UOM_MULT AS INT))
        + ' EA' + '/'+Ltrim(Rtrim(h.UOM)) AS PackageString
 INTO   bluebin.DimItem
-FROM   ITEMMAST a
+FROM   ITEMMAST a 
        --LEFT JOIN ICMANFCODE b
        --       ON a.MANUF_CODE = b.MANUF_CODE
-       LEFT JOIN ITEMSRC c
-              ON a.ITEM = c.ITEM
+       LEFT JOIN ITEMSRC c 
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(c.ITEM))
                  AND c.REPLENISH_PRI = 1
                  AND c.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
-       LEFT JOIN APVENMAST d
-              ON c.VENDOR = d.VENDOR
+       LEFT JOIN (select distinct VENDOR_GROUP,VENDOR,VENDOR_VNAME from APVENMAST) d 
+              ON ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(d.VENDOR))
        LEFT JOIN #ClinicalDescriptions e
-              ON a.ITEM = e.ITEM
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(e.ITEM))
        LEFT JOIN #LastPO f
-              ON a.ITEM = f.ITEM
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(f.ITEM))
        LEFT JOIN #StockLocations g
-              ON a.ITEM = g.ITEM
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(g.ITEM))
        LEFT JOIN #ItemContract h
-              ON a.ITEM = h.ITEM
-                 AND c.VENDOR = h.VENDOR
-
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(h.ITEM)) AND ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(h.VENDOR))
+order by a.ITEM
 
 
 /*********************		DROP Temp Tables	*********************************/
@@ -349,6 +401,12 @@ UPDATE etl.JobSteps
 SET LastModifiedDate = GETDATE()
 WHERE StepName = 'DimItem'
 GO
+
+
+
+
+
+
 
 
 /********************************************************************
@@ -539,12 +597,6 @@ GO
 
 
 
-/************************************************************
-
-				DimBin
-
-************************************************************/
-
 IF EXISTS ( SELECT  *
             FROM    sys.objects
             WHERE   object_id = OBJECT_ID(N'etl_DimBin')
@@ -601,7 +653,7 @@ WHERE  ITEM_TYPE IN ( 'I', 'N' )
                     FROM   ITEMLOC a INNER JOIN bluebin.DimLocation b ON a.LOCATION = b.LocationID
 WHERE  b.BlueBinFlag = 1)
 
-SELECT ITEMLOC.ITEM,
+SELECT distinct ITEMLOC.ITEM,
        ITEMLOC.GL_CATEGORY,
        ICCATEGORY.ISS_ACCOUNT
 INTO   #ItemAccounts
@@ -609,13 +661,18 @@ FROM   ITEMLOC
        LEFT JOIN ICCATEGORY
               ON ITEMLOC.GL_CATEGORY = ICCATEGORY.GL_CATEGORY
                  AND ITEMLOC.LOCATION = ICCATEGORY.LOCATION
-WHERE  ITEMLOC.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+WHERE  ITEMLOC.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
 
-SELECT ITEM,
+SELECT distinct ITEM,
        LAST_ISS_COST
 INTO   #ItemStore
 FROM   ITEMLOC
 WHERE  LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+
+SELECT distinct ITEM,CONSIGNMENT_FL 
+INTO #Consignment
+FROM ITEMMAST
+WHERE ITEM in (select ITEM from ITEMLOC where LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION'))
 
 
 /***********************************		CREATE	DimBin		***********************************/
@@ -644,12 +701,13 @@ SELECT Row_number()
            COALESCE(COALESCE(#ItemReqs.UNIT_COST, #ItemOrders.ENT_UNIT_CST), #ItemStore.LAST_ISS_COST) AS BinCurrentCost,
            CASE
              WHEN ltrim(rtrim(ITEMLOC.USER_FIELD1)) = 'Consignment' THEN 'Y'
+			 WHEN UPPER(ltrim(rtrim(ITEMLOC.USER_FIELD1))) = 'CONSIGNMENT' OR #Consignment.CONSIGNMENT_FL = 'Y'  THEN 'Y'
              ELSE 'N'
            END                                                                                        AS BinConsignmentFlag,
            #ItemAccounts.ISS_ACCOUNT                                                                  AS BinGLAccount,
 		   'Awaiting Updated Status'																							AS BinCurrentStatus
     INTO   bluebin.DimBin
-    FROM   ITEMLOC
+    FROM   ITEMLOC  
            INNER JOIN bluebin.DimLocation
                    ON ITEMLOC.LOCATION = DimLocation.LocationID
 				   AND ITEMLOC.COMPANY = DimLocation.LocationFacility			   
@@ -667,7 +725,10 @@ SELECT Row_number()
                   ON ITEMLOC.ITEM = #ItemAccounts.ITEM
            LEFT JOIN #ItemStore
                   ON ITEMLOC.ITEM = #ItemStore.ITEM
+		   LEFT JOIN #Consignment
+                  ON ITEMLOC.ITEM = #Consignment.ITEM
 	WHERE DimLocation.BlueBinFlag = 1
+
 
 
 /*****************************************		DROP Temp Tables	**************************************/
@@ -677,12 +738,15 @@ DROP TABLE #ItemReqs
 DROP TABLE #ItemOrders
 DROP TABLE #ItemAccounts
 DROP TABLE #ItemStore
+DROP TABLE #Consignment
 
 GO
 
 UPDATE etl.JobSteps
 SET LastModifiedDate = GETDATE()
 WHERE StepName = 'DimBin'
+
+
 
 
 /*******************************************
@@ -1242,7 +1306,7 @@ BEGIN CATCH
 END CATCH
 
 
-SELECT DimBin.BinKey,
+SELECT distinct DimBin.BinKey,
        DimBin.LocationID,
        DimBin.ItemID,
        DimBin.BinSequence,
@@ -1814,6 +1878,115 @@ GO
 
 Print 'ETL Sprocs updated'
 GO
+
+/********************************************************************
+
+					DimFacility
+
+********************************************************************/
+
+IF EXISTS ( SELECT  *
+            FROM    sys.objects
+            WHERE   object_id = OBJECT_ID(N'etl_DimFacility')
+                    AND type IN ( N'P', N'PC' ) ) 
+
+DROP PROCEDURE  etl_DimFacility
+GO
+
+
+CREATE PROCEDURE etl_DimFacility
+AS
+
+
+/*********************		POPULATE/update DimFacility	****************************/
+if not exists (select * from sys.tables where name = 'DimFacility')
+BEGIN
+CREATE TABLE [bluebin].[DimFacility](
+	[FacilityID] INT NOT NULL ,
+	[FacilityName] varchar (50) NOT NULL
+)
+END 
+
+    INSERT INTO bluebin.DimFacility 
+	SELECT
+	COMPANY as FacilityID,
+	NAME as FacilityName
+
+    FROM   dbo.APCOMPANY a
+	left join bluebin.DimFacility df on a.COMPANY = df.FacilityID 
+	where df.FacilityID is null
+GO
+
+UPDATE etl.JobSteps
+SET LastModifiedDate = GETDATE()
+WHERE StepName = 'DimFacility'
+GO
+
+/********************************************************************
+
+					BlueBinParMaster
+
+********************************************************************/
+
+IF EXISTS ( SELECT  *
+            FROM    sys.objects
+            WHERE   object_id = OBJECT_ID(N'etl_BlueBinParMaster')
+                    AND type IN ( N'P', N'PC' ) ) 
+
+DROP PROCEDURE  etl_BlueBinParMaster
+GO
+
+
+CREATE PROCEDURE etl_BlueBinParMaster
+AS
+
+
+/*********************		UPDATE BlueBinParMaster	****************************/
+
+update bluebin.BlueBinParMaster set BinSequence = db.BS, BinQuantity = convert(int,db.BQ), BinSize = db.Size, LeadTime = db.BinLeadTime FROM
+	(select LocationID as L,ItemID as I,BinFacility,BinSequence as BS,BinQty as BQ,BinSize as Size,BinLeadTime from bluebin.DimBin) as db
+where rtrim(ItemID) = rtrim(db.I) and rtrim(LocationID) = rtrim(db.L) and FacilityID = db.BinFacility and Updated = 1 and
+		(BinSequence <> db.BS OR BinQuantity <> convert(int,db.BQ) OR BinSize <> db.Size OR LeadTime <> db.BinLeadTime)
+
+update bluebin.BlueBinParMaster set Updated = 1 from 
+	(select LocationID as L,ItemID as I,BinFacility,BinSequence as BS,BinQty as BQ,BinSize as Size,BinLeadTime from bluebin.DimBin) as db
+where rtrim(ItemID) = rtrim(db.I) and rtrim(LocationID) = rtrim(db.L) and FacilityID = db.BinFacility and BinSequence = db.BS and BinQuantity = convert(int,db.BQ) and BinSize = db.Size and LeadTime = db.BinLeadTime and Updated = 0
+
+
+
+insert [bluebin].[BlueBinParMaster] (FacilityID,LocationID,ItemID,BinSequence,BinSize,BinUOM,BinQuantity,LeadTime,ItemType,WHLocationID,WHSequence,PatientCharge,Updated,LastUpdated)
+select 
+db.BinFacility,
+db.LocationID,
+db.ItemID,
+db.BinSequence,
+db.BinSize,
+db.BinUOM,
+convert(int,db.BinQty),
+db.BinLeadTime,
+'',
+'',
+'',
+0,
+1,
+getdate()
+from bluebin.DimBin db
+left join bluebin.BlueBinParMaster bbpm on rtrim(db.ItemID) = rtrim(bbpm.ItemID) 
+												and rtrim(db.LocationID) = rtrim(bbpm.LocationID)  
+													and db.BinFacility = bbpm.FacilityID 
+where 
+bbpm.ParMasterID is null
+
+	
+GO
+
+UPDATE etl.JobSteps
+SET LastModifiedDate = GETDATE()
+WHERE StepName = 'BlueBinParMaster'
+GO
+
+
+
 --*********************************************************************************************
 --Tableau Sproc  These load data into the datasources for Tableau
 --*********************************************************************************************
@@ -2724,4 +2897,5 @@ GO
 
 
 Print 'Tableau (tb) sprocs updated'
+Print 'DB: ' + DB_NAME() + ' updated'
 GO

@@ -14,7 +14,7 @@ SET NOCOUNT ON
 select
 		a.[GembaAuditNodeID]
 		,convert(varchar,a.[Date],101) as [Date]
-		,a.[LocationID]
+		,rtrim([LocationID]) as LocationID
 		,b1.UserLogin as Auditer
 		,a.[AdditionalComments]
 		,a.[PS_EmptyBins]

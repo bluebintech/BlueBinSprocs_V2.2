@@ -6,13 +6,14 @@ GO
 CREATE PROCEDURE sp_SelectQCNFormEdit
 @QCNID int
 
+
 --WITH ENCRYPTION
 AS
 BEGIN
 SET NOCOUNT ON
 SELECT 
 	[QCNID]
-	,[LocationID]
+	,rtrim([LocationID]) as LocationID
 	,rtrim(a.ItemID) as ItemID
 	,b1.LastName + ', ' + b1.FirstName + ' (' + b1.Login + ')' as [RequesterUser]
 	,b2.LastName + ', ' + b2.FirstName + ' (' + b2.Login + ')' as [AssignedUser]

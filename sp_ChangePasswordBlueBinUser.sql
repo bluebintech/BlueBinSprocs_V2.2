@@ -15,7 +15,7 @@ BEGIN
 	  set @newpwdHash = convert(varbinary(max),rtrim(@NewPassword))
      
       SELECT @BlueBinUserID = BlueBinUserID, @LastLoginDate = LastLoginDate
-      FROM [bluebin].[BlueBinUser] WHERE UserLogin = @UserLogin AND [Password] = (HASHBYTES('SHA1', @oldpwdHash))--@Password
+      FROM [bluebin].[BlueBinUser] WHERE LOWER(UserLogin) = LOWER(@UserLogin) AND [Password] = (HASHBYTES('SHA1', @oldpwdHash))--@Password
      
       IF @BlueBinUserID IS NOT NULL  
       BEGIN

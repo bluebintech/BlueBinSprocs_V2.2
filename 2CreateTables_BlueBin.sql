@@ -10,6 +10,35 @@ GO
 SET ANSI_PADDING ON
 GO
 
+
+
+if not exists (select * from sys.tables where name = 'BlueBinParMaster')
+BEGIN
+CREATE TABLE [bluebin].[BlueBinParMaster](
+	[ParMasterID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[FacilityID] smallint not null,
+	[LocationID] char (10) NOT NULL,
+	[ItemID] char (32) NOT NULL,
+	[BinSequence] varchar (50) NOT NULL,
+	[BinSize] varchar(5) NULL,
+	[BinUOM] varchar (10) NULL,
+	[BinQuantity] int NULL,
+    [LeadTime] smallint NULL,
+    [ItemType] varchar (10) NULL,
+	[WHLocationID] char(10) null,
+	[WHSequence] varchar(50) null,
+	[PatientCharge] int not NULL,
+	[Updated] int not null,
+	[LastUpdated] datetime not null
+	
+)
+
+
+END
+GO
+
+
+
 if not exists (select * from sys.tables where name = 'MasterLog')
 BEGIN
 CREATE TABLE [bluebin].[MasterLog](
@@ -58,7 +87,8 @@ VALUES
 ('MENU-Gemba','1','DMS',1,getdate(),''),
 ('MENU-Hardware','1','DMS',1,getdate(),''),
 ('MENU-Scanning','1','DMS',1,getdate(),''),
-('MENU-Other','1','DMS',1,getdate(),'')
+('MENU-Other','1','DMS',1,getdate(),''),
+('ADMIN-PARMASTER',0,'DMS',1,getdate(),'')
 
 END
 GO
@@ -120,6 +150,7 @@ CREATE TABLE [bluebin].[BlueBinOperations](
 )
 
 Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
+('ADMIN-PARMASTER','Give User ability to see Custom BlueBin Par Master'),
 ('ADMIN-MENU','Give User ability to see the Main Admin Menu'),
 ('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
 ('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),

@@ -5,7 +5,7 @@ GO
 --exec sp_InsertGembaAuditStage 'TEST'
 
 CREATE PROCEDURE sp_InsertGembaAuditStage
-	@Auditer varchar(255),
+	LOWER(@Auditer) varchar(255),
 	@KanbansFilled int,
 	@KanbansFilledText varchar(max),
 	@LeftBehind int,
@@ -71,7 +71,7 @@ insert into [gemba].[GembaAuditStage] (
 )
 VALUES (
 getdate(), --Date
-(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer),
+(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)),
 @KanbansFilled,
 @KanbansFilledText,
 @LeftBehind,

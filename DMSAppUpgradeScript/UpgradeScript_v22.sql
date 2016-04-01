@@ -1,4 +1,7 @@
---Upgrade Script v
+
+	
+	
+	--Upgrade Script v
 --Backward compatible to V1.0
 --Created By Gerry Butler 20160122
 
@@ -14,6 +17,7 @@ GO
 SET NOCOUNT ON
 GO
 
+--select 'DB Updating: ' + DB_NAME()
 --*************************************************************************************************************************************************
 --Schema Updates
 --*************************************************************************************************************************************************
@@ -88,6 +92,16 @@ ALTER TABLE bluebin.BlueBinResource ALTER COLUMN Email varchar(60)
 GO
 ALTER TABLE bluebin.Config ALTER COLUMN ConfigValue varchar(100)
 GO
+ALTER TABLE bluebin.DimWarehouseItem ALTER COLUMN LocationID char(10)
+GO
+ALTER TABLE gemba.GembaAuditNode ALTER COLUMN LocationID char(10)
+GO
+ALTER TABLE qcn.QCN ALTER COLUMN LocationID char(10)
+GO
+ALTER TABLE tableau.Sourcing ALTER COLUMN ShipLocation char(10)
+GO
+ALTER TABLE tableau.Sourcing ALTER COLUMN PurchaseLocation char(10)
+GO
 
 if not exists(select * from sys.columns where name = 'Description' and object_id = (select object_id from sys.tables where name = 'BlueBinOperations'))
 BEGIN
@@ -144,7 +158,32 @@ Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
 ('ADMIN-CONFIG','Give User ability to see the Sub Admin Menu Config'),
 ('ADMIN-USERS','Give User ability to see the Sub Admin Menu User Administration'),
 ('ADMIN-RESOURCES','Give User ability to see the Sub Admin Menu Resources'),
-('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training')
+('ADMIN-TRAINING','Give User ability to see the Sub Admin Menu Training'),
+('ADMIN-PARMASTER','Give User ability to see Custom BlueBin Par Master'),
+('ADMIN-PARMASTER-EDIT','Give User ability to see Custom BlueBin Par Master and to Edit it.')
+END
+GO
+
+if not exists(select * from bluebin.Config where ConfigName = 'FriendlySiteName')
+BEGIN
+insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType,Description)
+select 'FriendlySiteName',(select ConfigValue from bluebin.Config where ConfigName = 'SiteAppURL'),1,getdate(),'DMS','Friendly Name that displays in the Home splash screen to welcome a new user'
+END
+GO
+
+if not exists(select * from bluebin.BlueBinOperations where OpName = 'ADMIN-PARMASTER-EDIT')  
+BEGIN
+Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
+('ADMIN-PARMASTER-EDIT','Give User ability to see Custom BlueBin Par Master and to Edit it.')
+
+END
+GO
+
+if not exists(select * from bluebin.BlueBinOperations where OpName = 'ADMIN-PARMASTER')  
+BEGIN
+Insert into bluebin.BlueBinOperations (OpName,[Description]) VALUES
+('ADMIN-PARMASTER','Give User ability to see Custom BlueBin Par Master')
+
 END
 GO
 
@@ -165,6 +204,14 @@ insert into bluebin.BlueBinRoleOperations
 select sr.RoleID,so.OpID
 from bluebin.BlueBinRoles sr,bluebin.BlueBinOperations so
 where so.OpName like 'MENU%' and so.OpID not in (select OpID from bluebin.BlueBinRoleOperations)
+
+
+
+delete 
+--select *
+from bluebin.BlueBinRoleOperations
+where RoleID not in (select RoleID from bluebin.BlueBinRoles where RoleName = 'BlueBinPersonnel')
+and OpID in (select OpID from bluebin.BlueBinOperations where OpName in (select ConfigName from bluebin.Config where ConfigName like 'MENU-%' and ConfigValue = '0'))
 END
 GO
 
@@ -211,6 +258,14 @@ GO
 if not exists(select * from sys.columns where name = 'ConfigType' and object_id = (select object_id from sys.tables where name = 'Config'))
 BEGIN
 ALTER TABLE bluebin.Config ADD ConfigType varchar(50);
+END
+GO
+
+if not exists(select * from bluebin.Config where ConfigName = 'ADMIN-PARMASTER')  
+BEGIN
+insert into bluebin.Config (ConfigName,ConfigValue,Active,LastUpdated,ConfigType,[Description])
+select 'ADMIN-PARMASTER',0,1,getdate(),'DMS','Give User ability to see Custom BlueBin Par Master'
+
 END
 GO
 
@@ -271,6 +326,48 @@ Print 'Table Updates Complete'
 --*************************************************************************************************************************************************
 --Table Adds
 --*************************************************************************************************************************************************
+
+--*****************************************************
+--**************************NEWTABLE**********************
+
+
+--*****************************************************
+--**************************NEWTABLE**********************
+
+
+--*****************************************************
+--**************************NEWTABLE**********************
+
+
+
+--*****************************************************
+--**************************NEWTABLE**********************
+
+
+if not exists (select * from sys.tables where name = 'BlueBinParMaster')
+BEGIN
+CREATE TABLE [bluebin].[BlueBinParMaster](
+	[ParMasterID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[FacilityID] smallint not null,
+	[LocationID] char (10) NOT NULL,
+	[ItemID] char (32) NOT NULL,
+	[BinSequence] varchar (50) NOT NULL,
+	[BinSize] varchar(5) NULL,
+	[BinUOM] varchar (10) NULL,
+	[BinQuantity] int NULL,
+    [LeadTime] smallint NULL,
+    [ItemType] varchar (10) NULL,
+	[WHLocationID] char(10) null,
+	[WHSequence] varchar(50) null,
+	[PatientCharge] int not NULL,
+	[Updated] int not null,
+	[LastUpdated] datetime not null
+	
+)
+
+
+END
+GO
 
 --*****************************************************
 --**************************NEWTABLE**********************
@@ -416,7 +513,7 @@ if not exists (select * from sys.tables where name = 'ScanBatch')
 BEGIN
 CREATE TABLE [scan].[ScanBatch](
 	[ScanBatchID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
-	[LocationID] char(7) NOT NULL,
+	[LocationID] char(10) NOT NULL,
 	[BlueBinUserID] int NOT NULL,
 	[Active] int NOT NULL,
 	[Extracted] int NOT NULL,
@@ -711,7 +808,7 @@ BEGIN
 CREATE TABLE [gemba].[GembaAuditNode](
 	[GembaAuditNodeID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
 	[Date] datetime not null,
-	[LocationID] char(5) not null,
+	[LocationID] char(10) not null,
 	[AuditerUserID]  int NOT NULL,
 	[AdditionalComments] varchar(max) NULL,
     [PS_EmptyBins] int NOT NULL,
@@ -770,7 +867,7 @@ if not exists (select * from sys.tables where name = 'QCN')
 BEGIN
 CREATE TABLE [qcn].[QCN](
 	[QCNID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
-	[LocationID] char(5) not null,
+	[LocationID] char(10) not null,
 	[ItemID] char(32) null,
 	[RequesterUserID] int NOT NULL,
 	[AssignedUserID] int NULL,
@@ -854,8 +951,173 @@ Print 'Table Adds Complete'
 --*************************************************************************************************************************************************
 --Sproc Updates
 --*************************************************************************************************************************************************
+
 --*****************************************************
 --**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectUserName') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectUserName
+GO
+
+--exec sp_SelectUserName'gbutler@bluebin.com'
+CREATE PROCEDURE sp_SelectUserName
+@UserLogin varchar(100)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+select 
+FirstName
+from  [bluebin].[BlueBinUser] 
+
+WHERE LOWER(UserLogin)=LOWER(@UserLogin)
+
+END
+GO
+grant exec on sp_SelectUserName to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectFacilityName') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectFacilityName
+GO
+
+--exec sp_SelectFacilityName
+CREATE PROCEDURE sp_SelectFacilityName
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+select ConfigValue from bluebin.Config where ConfigName = 'FriendlySiteName'
+
+END
+GO
+grant exec on sp_SelectFacilityName to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectScanDates') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectScanDates
+GO
+
+--exec sp_SelectScanDates ''
+CREATE PROCEDURE sp_SelectScanDates
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+SELECT DISTINCT 
+convert(varchar,(convert(Date,ScanDateTime)),111) as ScanDate
+from scan.ScanBatch
+WHERE Active = 1 --and convert(Date,ScanDateTime) = @ScanDate 
+order by 1 desc
+
+END 
+GO
+grant exec on sp_SelectScanDates to public
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'ssp_Versions') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure ssp_Versions
+GO
+
+--exec ssp_Versions
+
+CREATE PROCEDURE ssp_Versions
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+DECLARE @DBTable TABLE (iid int identity (1,1) PRIMARY KEY,dbname varchar(50));
+DECLARE @DBUpdate TABLE (iid int identity (1,1) PRIMARY KEY,dbname varchar(50));
+Create table #Versions (dbname varchar(100),[Version] varchar(100))
+
+declare @iid int, @dbname varchar(50), @sql varchar(max), @sql2 varchar(max)
+
+
+insert @DBTable (dbname) select name from sys.databases 
+
+
+set @iid = 1
+While @iid <= (select MAX(iid) from @DBTable)
+BEGIN
+select @dbname = dbname from @DBTable where iid = @iid
+set @sql = 'Use ' + @DBName + 
+
+' 
+	if exists (select * from sys.tables where name = ''Config'')
+	BEGIN
+	insert into #versions (dbname,[Version])
+	select 
+		''' + @dbname + ''',
+		ConfigValue as Version
+	 from bluebin.Config where ConfigName = ''Version''
+	END
+'
+exec (@sql) 
+
+delete from #Versions where [Version] = ''
+set @iid = @iid +1
+END
+
+
+select * from #Versions order by 2 desc
+drop table #Versions
+
+END 
+GO
+grant exec on ssp_Versions to public
+GO
+
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_ExtractScansXML') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_ExtractScansXML
+GO
+
+--exec sp_ExtractScansXML
+
+CREATE PROCEDURE sp_ExtractScansXML
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+select
+sb.ScanBatchID as '@ID',
+ltrim(rtrim(sb.LocationID)) as LocationID,
+sl.Line as Line,
+ltrim(rtrim(sl.ItemID)) as ItemID,
+sl.Qty as Qty,
+sb.ScanDateTime as ScanDateTime
+from 
+scan.ScanBatch sb
+inner join scan.ScanLine sl on sb.ScanBatchID = sl.ScanBatchID
+where sb.Extracted = 0
+
+FOR XML PATH('ScanBatch'), ROOT('Scans')
+
+END
+GO
+grant exec on sp_ExtractScansXML to appusers
+GO
 
 --*****************************************************
 --**************************SPROC**********************
@@ -1103,7 +1365,7 @@ SET NOCOUNT ON
 Select 
 bbuo.BlueBinUserID,
 bbuo.OpID,
-bbu.UserLogin,
+LOWER(bbu.UserLogin) as UserLogin,
 bbu.LastName + ', ' + FirstName as Name,
 bbr.RoleName as [CurrentRole],
 bbo.OpName 
@@ -1278,7 +1540,7 @@ AS
 BEGIN
 SET NOCOUNT ON;
 --Select RoleName from bluebin.BlueBinRoles
---where RoleID in (select RoleID from bluebin.BlueBinUser where UserLogin = @UserLogin)
+--where RoleID in (select RoleID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin))
 
 declare @UserOp as Table (OpName varchar(50))
 
@@ -1288,9 +1550,9 @@ Distinct
 OpName 
 from bluebin.BlueBinOperations
 where 
-OpID in (select OpID from bluebin.BlueBinUserOperations where BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))
+OpID in (select OpID from bluebin.BlueBinUserOperations where BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))
 or
-OpID in (select OpID from bluebin.BlueBinRoleOperations where RoleID in (select RoleID from bluebin.BlueBinUser where UserLogin = @UserLogin))
+OpID in (select OpID from bluebin.BlueBinRoleOperations where RoleID in (select RoleID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))
 
 
 if exists(select * from @UserOp where OpName = @OpName)
@@ -1479,13 +1741,13 @@ drop procedure sp_InsertScanBatch
 GO
 
 /*
-declare @Location char(5),@Scanner varchar(255) = 'gbutler@bluebin.com'
+declare @Location char(7),@Scanner varchar(255) = 'gbutler@bluebin.com'
 select @Location = LocationID from bluebin.DimLocation where LocationName = 'DN NICU 1'
 exec sp_InsertScanBatch @Location,@Scanner
 */
 
 CREATE PROCEDURE sp_InsertScanBatch
-@Location char(7),
+@Location char(10),
 @Scanner varchar(255)
 
 
@@ -1497,7 +1759,7 @@ SET NOCOUNT ON
 insert into scan.ScanBatch (LocationID,BlueBinUserID,Active,ScanDateTime,Extracted)
 select 
 @Location,
-(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Scanner),
+(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Scanner)),
 1, --Default Active to Yes
 getdate(),
 0 --Default Extracted to No
@@ -1523,9 +1785,10 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectScanBatc
 drop procedure sp_SelectScanBatch
 GO
 
---exec sp_SelectScanBatch
+--exec sp_SelectScanBatch '2016/02/09'
 
 CREATE PROCEDURE sp_SelectScanBatch
+@ScanDate varchar(20)
 
 --WITH ENCRYPTION
 AS
@@ -1533,10 +1796,11 @@ BEGIN
 SET NOCOUNT ON
 select 
 sb.ScanBatchID,
-sb.LocationID,
+rtrim(sb.LocationID) as LocationID,
 dl.LocationName as LocationName,
 max(sl.Line) as BinsScanned,
 sb.ScanDateTime as [DateScanned],
+--convert(Date,sb.ScanDateTime) as ScanDate,
 bbu.LastName + ', ' + bbu.FirstName as ScannedBy,
 case when sb.Extracted = 0 then 'No' Else 'Yes' end as Extracted
 
@@ -1544,7 +1808,8 @@ from scan.ScanBatch sb
 inner join bluebin.DimLocation dl on sb.LocationID = dl.LocationID
 inner join scan.ScanLine sl on sb.ScanBatchID = sl.ScanBatchID
 inner join bluebin.BlueBinUser bbu on sb.BlueBinUserID = bbu.BlueBinUserID
-where sb.Active = 1
+where sb.Active = 1 
+and convert(varchar,(convert(Date,sb.ScanDateTime)),111) LIKE '%' + @ScanDate + '%'  
 
 group by 
 sb.ScanBatchID,
@@ -1561,8 +1826,11 @@ grant exec on sp_SelectScanBatch to public
 GO
 
 
+
+
 --*****************************************************
 --**************************SPROC**********************
+
 
 
 if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectScanLines') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
@@ -1582,7 +1850,7 @@ select
 sb.ScanBatchID,
 db.BinKey,
 db.BinSequence,
-sb.LocationID,
+rtrim(sb.LocationID) as LocationID,
 dl.LocationName as LocationName,
 sl.ItemID,
 di.ItemDescription,
@@ -1605,6 +1873,7 @@ END
 GO
 grant exec on sp_SelectScanLines to public
 GO
+
 
 
 
@@ -1688,7 +1957,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectQCN') an
 drop procedure sp_SelectQCN
 GO
 
---exec sp_SelectQCN ''
+--exec sp_SelectQCN '',0
 CREATE PROCEDURE sp_SelectQCN
 @LocationName varchar(50)
 ,@Completed int
@@ -2050,7 +2319,7 @@ GO
 
 CREATE PROCEDURE sp_EditQCN
 @QCNID int,
-@LocationID varchar(5),
+@LocationID varchar(10),
 @ItemID varchar(32),
 @Requester varchar(255),
 @Assigned varchar(255),
@@ -2190,7 +2459,7 @@ if not exists (select * from bluebin.BlueBinTraining where Active = 1 and BlueBi
 	@Form3009,
 	@Form3010,
 	1, --Default Active to Yes
-	(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Updater),
+	(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
 	getdate()
 
 	;
@@ -2273,7 +2542,7 @@ set
 	Form3008 = @Form3008,
 	Form3009 = @Form3009,
 	Form3010 = @Form3010,
-	BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Updater),
+	BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
 	LastUpdated = getdate()
 where BlueBinTrainingID = @BlueBinTrainingID
 	;
@@ -2388,7 +2657,7 @@ SET NOCOUNT ON
 
 
 Insert into bluebin.MasterLog ([BlueBinUserID],[ActionType],[ActionName],[ActionID],[ActionDateTime]) Values
-((select BlueBinUserID from bluebin.BlueBinUser where [UserLogin] = @UserLogin),@ActionType,@ActionName,@ActionID,getdate())
+((select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)),@ActionType,@ActionName,@ActionID,getdate())
 
 END
 GO
@@ -2553,7 +2822,7 @@ SET NOCOUNT ON
     q.[GembaAuditNodeID],
 	dl.[LocationName],
 	u.LastName + ', ' + u.FirstName as Auditer,
-    u.UserLogin as AuditerLogin,
+    LOWER(u.UserLogin) as AuditerLogin,
     q.PS_TotalScore as [Pull Score],
     q.RS_TotalScore as [Replenishment Score],
     q.NIS_TotalScore as [Node Integrity Score],
@@ -2591,8 +2860,8 @@ SET NOCOUNT ON
 select
 		a.[GembaAuditNodeID]
 		,convert(varchar,a.[Date],101) as [Date]
-		,a.[LocationID]
-		,b1.UserLogin as Auditer
+		,rtrim([LocationID]) as LocationID
+		,LOWER(b1.UserLogin) as Auditer
 		,a.[AdditionalComments]
 		,a.[PS_EmptyBins]
 		,a.[PS_BackBins]
@@ -2655,7 +2924,7 @@ SELECT
       a.[GembaAuditStageID]
       ,a.[Date]
       ,b.LastName + ', ' + b.FirstName as Auditer
-      ,b.UserLogin as AuditerLogin
+      ,LOWER(b.UserLogin) as AuditerLogin
       ,a.[OldestBin]
       ,case when a.[KanbansFilled] = 1 then 'Yes' else 'No' end [KanbansFilled]
       ,case when a.[ReqsSubmitted] = 3 then 'Need' when a.[ReqsSubmitted] = 0 then 'No' else 'Yes' end [ReqsSubmitted]
@@ -2695,7 +2964,7 @@ SET NOCOUNT ON
 select 
     a.GembaAuditStageID
     , convert(varchar,a.[Date],101) as [Date]
-    ,b.UserLogin as Auditer
+    ,LOWER(b.UserLogin) as Auditer
     ,a.[KanbansFilled]
     ,a.[KanbansFilledText]
     ,a.[LeftBehind]
@@ -2774,7 +3043,7 @@ CREATE PROCEDURE sp_SelectLocation
 AS
 BEGIN
 SET NOCOUNT ON
-SELECT LocationID,LocationName FROM [bluebin].[DimLocation] where BlueBinFlag = 1
+SELECT LocationID,LocationName FROM [bluebin].[DimLocation] where BlueBinFlag = 1 order by LocationName
 END
 GO
 grant exec on sp_SelectLocation to appusers
@@ -2807,9 +3076,10 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectQCNFormE
 drop procedure sp_SelectQCNFormEdit
 GO
 
---exec sp_SelectQCNFormEdit ''
+--exec sp_SelectQCNFormEdit '73'  
 CREATE PROCEDURE sp_SelectQCNFormEdit
 @QCNID int
+
 
 --WITH ENCRYPTION
 AS
@@ -2817,7 +3087,7 @@ BEGIN
 SET NOCOUNT ON
 SELECT 
 	[QCNID]
-	,[LocationID]
+	,rtrim([LocationID]) as LocationID
 	,rtrim(a.ItemID) as ItemID
 	,b1.LastName + ', ' + b1.FirstName + ' (' + b1.Login + ')' as [RequesterUser]
 	,b2.LastName + ', ' + b2.FirstName + ' (' + b2.Login + ')' as [AssignedUser]
@@ -2839,6 +3109,8 @@ END
 GO
 grant exec on sp_SelectQCNFormEdit to appusers
 GO
+
+
 
 --*****************************************************
 --**************************SPROC**********************
@@ -2949,9 +3221,9 @@ CREATE PROCEDURE sp_UpdateImages
 AS
 BEGIN
 SET NOCOUNT ON
-if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH)))))
+if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH)))))
 	BEGIN
-	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 	END
 
 END
@@ -2993,14 +3265,14 @@ insert @table exec sp_GeneratePassword 8
 set @RandomPassword = (Select p from @table)
 set @newpwdHash = convert(varbinary(max),rtrim(@RandomPassword))
 
-if not exists (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin)
+if not exists (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin))
 	BEGIN
 	insert into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,RoleID,MustChangePassword,PasswordExpires,[Password],Email,Active,LastUpdated,LastLoginDate,Title)
 	VALUES
-	(@UserLogin,@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),@UserLogin,1,getdate(),getdate(),@Title)
+	(LOWER(@UserLogin),@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),LOWER(@UserLogin),1,getdate(),getdate(),@Title)
 	;
 	SET @NewBlueBinUserID = SCOPE_IDENTITY()
-	set @message = 'New User Created - '+ @UserLogin
+	set @message = 'New User Created - '+ LOWER(@UserLogin)
 	select @fakelogin = 'gbutler@bluebin.com'
 		exec sp_InsertMasterLog @UserLogin,'Users',@message,@NewBlueBinUserID      
 	;
@@ -3060,7 +3332,7 @@ IF (@Password = '' or @Password is null)
         LastName = @LastName, 
         MiddleName = @MiddleName, 
         Active = @Active,
-        Email = @UserLogin,--@Email, 
+        Email = LOWER(@UserLogin),--@Email, 
         LastUpdated = getdate(), 
         MustChangePassword = @MustChangePassword,
         PasswordExpires = @PasswordExpires,
@@ -3075,7 +3347,7 @@ IF (@Password = '' or @Password is null)
         LastName = @LastName, 
         MiddleName = @MiddleName, 
         Active = @Active,
-        Email = @UserLogin,--@Email, 
+        Email = LOWER(@UserLogin),--@Email, 
         LastUpdated = getdate(), 
         MustChangePassword = @MustChangePassword,
         PasswordExpires = @PasswordExpires,
@@ -3086,7 +3358,7 @@ IF (@Password = '' or @Password is null)
 	END
 
 	;
-	set @message = 'User Updated - '+ @UserLogin
+	set @message = 'User Updated - '+ LOWER(@UserLogin)
 	select @fakelogin = 'gbutler@bluebin.com'
 	exec sp_InsertMasterLog @fakelogin,'Users',@message,@BlueBinUserID
 END
@@ -3113,7 +3385,7 @@ BEGIN
 SET NOCOUNT ON
 	SELECT 
 	[BlueBinUserID]
-      ,[UserLogin]
+      ,LOWER(UserLogin) as [UserLogin]
       ,[FirstName]
       ,[LastName]
       ,[MiddleName]
@@ -3271,7 +3543,7 @@ BEGIN
 	  
      
       SELECT @BlueBinUserID = BlueBinUserID
-      FROM [bluebin].[BlueBinUser] WHERE UserLogin = @UserLogin --(HASHBYTES('SHA1', @oldpwdHash))--@Password
+      FROM [bluebin].[BlueBinUser] WHERE LOWER(UserLogin) = LOWER(@UserLogin) --(HASHBYTES('SHA1', @oldpwdHash))--@Password
      
       IF @BlueBinUserID IS NOT NULL  
       BEGIN
@@ -3280,7 +3552,7 @@ BEGIN
 
 			insert @table exec sp_GeneratePassword 8 
 			set @RandomPassword = (Select p from @table)
-			insert @UserTable (BlueBinUserID,UserLogin,pwd,created) VALUES (@BlueBinUserID,@UserLogin,@RandomPassword,getdate())
+			insert @UserTable (BlueBinUserID,UserLogin,pwd,created) VALUES (@BlueBinUserID,LOWER(@UserLogin),@RandomPassword,getdate())
 			set @newpwdHash = convert(varbinary(max),rtrim(@RandomPassword))
 
 						UPDATE [bluebin].[BlueBinUser]
@@ -3325,7 +3597,7 @@ BEGIN
 	  @LastLoginDate = LastLoginDate, 
 	  @MustChangePassword = 
 		case when LastUpdated  + PasswordExpires < getdate() then 1 else MustChangePassword end  --Password Expiration Date or if flag set
-      FROM [bluebin].[BlueBinUser] WHERE UserLogin = @UserLogin AND [Password] = (HASHBYTES('SHA1', @pwdHash))--@Password
+      FROM [bluebin].[BlueBinUser] WHERE LOWER(UserLogin) = LOWER(@UserLogin) AND [Password] = (HASHBYTES('SHA1', @pwdHash))--@Password
      
       IF @UserLogin IS NOT NULL  
       BEGIN
@@ -3387,7 +3659,7 @@ BEGIN
 	  set @newpwdHash = convert(varbinary(max),rtrim(@NewPassword))
      
       SELECT @BlueBinUserID = BlueBinUserID, @LastLoginDate = LastLoginDate
-      FROM [bluebin].[BlueBinUser] WHERE UserLogin = @UserLogin AND [Password] = (HASHBYTES('SHA1', @oldpwdHash))--@Password
+      FROM [bluebin].[BlueBinUser] WHERE LOWER(UserLogin) = LOWER(@UserLogin) AND [Password] = (HASHBYTES('SHA1', @oldpwdHash))--@Password
      
       IF @BlueBinUserID IS NOT NULL  
       BEGIN
@@ -3441,7 +3713,7 @@ GO
 
 CREATE PROCEDURE sp_EditGembaAuditNode
 @GembaAuditNodeID int,
-@Location char(5),
+@Location char(10),
 @AdditionalComments varchar(max),
 @PS_EmptyBins int,
 @PS_BackBins int,
@@ -3526,11 +3798,11 @@ exec sp_UpdateImages @GembaAuditNodeID,@Auditer,@ImageSourceIDPH
 update bluebin.MasterLog 
 set ActionID = @GembaAuditNodeID 
 where ActionType = 'Gemba' and 
-		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer) and 
-			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer))+convert(varchar,@ImageSourceIDPH))))
---if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)) and 
+			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)))+convert(varchar,@ImageSourceIDPH))))
+--if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 --	BEGIN
---	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+--	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 --	END
 END
 GO
@@ -3548,7 +3820,7 @@ GO
 --exec sp_InsertGembaAuditNode 'TEST'
 
 CREATE PROCEDURE sp_InsertGembaAuditNode
-@Location char(5),
+@Location char(10),
 @Auditer varchar(255),
 @AdditionalComments varchar(max),
 @PS_EmptyBins int,
@@ -3635,7 +3907,7 @@ VALUES
 (
 getdate(),  --Date
 @Location,
-(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer),
+(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)),
 @AdditionalComments,
 @PS_EmptyBins,
 @PS_BackBins,
@@ -3680,11 +3952,11 @@ exec sp_UpdateImages @GembaAuditNodeID,@Auditer,@ImageSourceIDPH
 update bluebin.MasterLog 
 set ActionID = @GembaAuditNodeID 
 where ActionType = 'Gemba' and 
-		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer) and 
-			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer))+convert(varchar,@ImageSourceIDPH))))
---if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)) and 
+			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)))+convert(varchar,@ImageSourceIDPH))))
+--if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 --	BEGIN
---	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+--	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 --	END
 
 END
@@ -3769,7 +4041,7 @@ insert into [gemba].[GembaAuditStage] (
 )
 VALUES (
 getdate(), --Date
-(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer),
+(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)),
 @KanbansFilled,
 @KanbansFilledText,
 @LeftBehind,
@@ -3817,7 +4089,7 @@ GO
 --exec sp_InsertQCN 
 
 CREATE PROCEDURE sp_InsertQCN
-@LocationID varchar(5),
+@LocationID varchar(10),
 @ItemID varchar(32),
 @Requester varchar(255),
 @Assigned varchar(255),
@@ -3970,10 +4242,10 @@ SET NOCOUNT ON
 insert into bluebin.[Image] 
 (ImageName,ImageType,ImageSource,ImageSourceID,[Image],[Active],[DateCreated],[LastUpdated])        
 VALUES 
-(@ImageName,@ImageType,@ImageSource,(select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceID)))),@Image,1,getdate(),getdate())
+(@ImageName,@ImageType,@ImageSource,(select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceID)))),@Image,1,getdate(),getdate())
 
 ;
-declare @ImageSourcePH int = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceID))))
+declare @ImageSourcePH int = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceID))))
 declare @Text varchar(60) = 'Insert Image - '+@ImageName
 
 exec sp_InsertMasterLog @UserLogin,'Gemba',@Text,@ImageSourcePH
@@ -4009,7 +4281,7 @@ from bluebin.[Image]
 where 
 (ImageSourceID = @GembaAuditNodeID and ImageSource like 'GembaAuditNode%') 
 or 
-(ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH)))))
+(ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH)))))
 order by DateCreated desc
 
 
@@ -4039,12 +4311,12 @@ SET NOCOUNT ON
 Delete 
 from bluebin.[Image]
 where 
-ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 ;
 Delete from bluebin.MasterLog 
 where ActionType = 'Gemba' and 
-		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin) and 
-			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)) and 
+			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceIDPH))))
 
 END
 GO
@@ -4119,13 +4391,13 @@ END
 select @iid = MIN(iid) from @UserTable
 while @iid < (select MAX(iid)+ 1 from @UserTable)
 begin
-	if not exists (select * from bluebin.BlueBinUser where UserLogin in (select UserLogin from @UserTable where iid = @iid))
+	if not exists (select * from bluebin.BlueBinUser where LOWER(UserLogin) in (select LOWER(UserLogin) from @UserTable where iid = @iid))
 	BEGIN	
 	select @Password =  convert(varbinary(max),rtrim([Password])) from @UserTable where iid = @iid
 	select @RoleID =  RoleID from bluebin.BlueBinRoles where RoleName = (select RoleName from @UserTable where iid = @iid)
 		
 	Insert Into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,Active,LastUpdated,RoleID,LastLoginDate,MustChangePassword,PasswordExpires,[Password],Email)
-	Select UserLogin,FirstName,LastName,'',1,getdate(),@RoleID,getdate()-1,1,'90',HASHBYTES('SHA1',@Password),Email from @UserTable where iid = @iid
+	Select LOWER(@UserLogin),FirstName,LastName,'',1,getdate(),@RoleID,getdate()-1,1,'90',HASHBYTES('SHA1',@Password),Email from @UserTable where iid = @iid
 	update @UserTable set Created = 1 where iid = @iid
 --exec sp_sacc_epoint_set_pwd @@IDENTITY,@PWD,@hosp
 
@@ -4158,7 +4430,7 @@ begin
 
 	set @FirstName = (select FirstName from @UserTable where iid = @iid)
 	set @LastName = (select LastName from @UserTable where iid = @iid)
-	set @UserLogin = (select UserLogin from @UserTable where iid = @iid)
+	set @UserLogin = (select LOWER(@UserLogin) from @UserTable where iid = @iid)
 	set @Email = (select Email from @UserTable where iid = @iid)
 	set @RoleName = (select RoleName from @UserTable where iid = @iid)
 
@@ -4177,11 +4449,600 @@ begin
 	
 END
 
-Select UserLogin,FirstName,LastName,RoleName,[Password],Email from @UserTable order by LastName
+Select LOWER(@UserLogin),FirstName,LastName,RoleName,[Password],Email from @UserTable order by LastName
 END
 GO
 
 
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinLocationMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectBlueBinLocationMaster
+GO
+
+--exec sp_SelectBlueBinLocationMaster '',''
+CREATE PROCEDURE sp_SelectBlueBinLocationMaster
+@LocationName varchar(255),
+@AcctUnit varchar(40)
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+IF exists (select * from sys.tables where name = 'RQLOC')
+BEGIN
+select
+LocationKey,
+LocationID,
+LocationName,
+isnull(gl.ACCT_UNIT,'') as AcctUnit,
+isnull(gl.DESCRIPTION,'') as AcctUnitDesc,
+case
+	when rl.REQ_LOCATION is null then 'No' else 'Yes'
+	end as Updated
+FROM 
+[bluebin].[DimLocation] dl
+left join dbo.RQLOC rl on dl.LocationID = rl.REQ_LOCATION
+left join dbo.GLNAMES gl on rl.ISS_ACCT_UNIT = gl.ACCT_UNIT and rl.COMPANY = gl.COMPANY
+WHERE 
+LocationName LIKE '%' + @LocationName + '%' and BlueBinFlag = 1 and isnull(gl.ACCT_UNIT,'') LIKE '%' + @AcctUnit + '%' 
+order by LocationID
+END
+ELSE 
+	BEGIN
+	select
+	LocationKey,
+	LocationID,
+	LocationName,
+	'N/A' as AcctUnit,
+	'N/A' as AcctUnitDesc,
+	'Yes' as Updated
+	FROM 
+	[bluebin].[DimLocation] dl
+	WHERE 
+	LocationName LIKE '%' + @LocationName + '%' and BlueBinFlag = 1  
+	order by LocationID
+	END
+
+
+END
+GO
+grant exec on sp_SelectBlueBinLocationMaster to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertBlueBinLocationMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertBlueBinLocationMaster
+GO
+
+--exec sp_InsertBlueBinLocationMaster 'BB'
+CREATE PROCEDURE sp_InsertBlueBinLocationMaster
+@LocationID varchar(10),
+@LocationName varchar(255)
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+if not exists (select * from bluebin.DimLocation where rtrim(LocationID) = rtrim(@LocationID))
+BEGIN
+insert [bluebin].[DimLocation] (LocationKey,LocationID,LocationName,LocationFacility,BlueBinFlag)
+VALUES ((select max(LocationKey)+1 from bluebin.DimLocation),@LocationID,@LocationName,1,1)
+END
+
+END
+GO
+grant exec on sp_InsertBlueBinLocationMaster to appusers
+GO
+
+
+
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteBlueBinLocationMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteBlueBinLocationMaster 
+
+GO
+
+--exec sp_DeleteBlueBinLocationMaster NULL 
+CREATE PROCEDURE sp_DeleteBlueBinLocationMaster
+@LocationKey int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+delete from [bluebin].[DimLocation]  
+where LocationKey = @LocationKey
+
+if exists (select * from bluebin.BlueBinParMaster where LocationID = (select LocationID from [bluebin].[DimLocation] where LocationKey = @LocationKey))
+BEGIN
+delete from [bluebin].[BlueBinParMaster]
+where LocationID = (select LocationID from [bluebin].[DimLocation] where LocationKey = @LocationKey)
+END
+END
+GO
+grant exec on sp_DeleteBlueBinLocationMaster to appusers
+GO
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditBlueBinLocationMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_EditBlueBinLocationMaster
+GO
+
+--exec sp_EditBlueBinLocationMaster 'DN000','Testing'
+CREATE PROCEDURE sp_EditBlueBinLocationMaster
+@LocationKey int,
+@LocationID varchar(10),
+@LocationName varchar(255)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+update [bluebin].[DimLocation]  
+set LocationName=@LocationName
+where LocationKey = @LocationKey
+
+END
+GO
+grant exec on sp_EditBlueBinLocationMaster to appusers
+GO
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinItemMasterDetail') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectBlueBinItemMasterDetail
+GO
+
+--exec sp_SelectBlueBinItemMaster '2601'
+CREATE PROCEDURE sp_SelectBlueBinItemMasterDetail
+@ItemKey int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+select 
+ItemKey,
+[ItemID],
+ItemDescription,
+ItemClinicalDescription,
+ActiveStatus,
+ISNULL(ItemManufacturer,'') as ItemManufacturer,
+ISNULL(ItemManufacturerNumber,'') as ItemManufacturerNumber,
+ISNULL(ItemVendor,'') as ItemVendor,
+ISNULL(ItemVendorNumber,'') as ItemVendorNumber,
+ISNULL(VendorItemNumber,'') as VendorItemNumber,
+LastPODate,
+StockUOM,
+BuyUOM,
+PackageString,
+StockLocation
+from  [bluebin].[DimItem] 
+
+WHERE ([ItemKey] = @ItemKey)
+
+
+END
+GO
+grant exec on sp_SelectBlueBinItemMasterDetail to appusers
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinItemMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectBlueBinItemMaster
+GO
+
+--exec sp_SelectBlueBinItemMaster '2601'
+CREATE PROCEDURE sp_SelectBlueBinItemMaster
+@ItemDescription varchar(255),
+@Manufacturer varchar(255)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+select
+ItemKey,
+[ItemID],
+ItemDescription,
+ItemClinicalDescription,
+ActiveStatus,
+ISNULL(ItemManufacturer,'') as Manufacturer,
+ISNULL(ItemManufacturerNumber,'') as ManufacturerNo,
+ISNULL(ItemVendor,'') as Vendor,
+ISNULL(ItemVendorNumber,'') as VendorNo,
+ISNULL(VendorItemNumber,'') as VendorItemID,
+LastPODate,
+StockUOM,
+BuyUOM,
+PackageString,
+StockLocation
+from  [bluebin].[DimItem]
+WHERE 
+	rtrim(ItemManufacturerNumber) +' - ' + rtrim(ItemManufacturer) like '%' + @Manufacturer + '%'
+	AND
+	rtrim(ItemID) +' - ' + rtrim(ItemDescription) like '%' + @ItemDescription + '%'
+OR
+	rtrim(ItemManufacturerNumber) +' - ' + rtrim(ItemManufacturer) like '%' + @Manufacturer + '%'
+	AND
+	rtrim(ItemID) +' - ' + rtrim(ItemClinicalDescription) like '%' + @ItemDescription + '%'
+order by ItemID
+
+END
+GO
+grant exec on sp_SelectBlueBinItemMaster to appusers
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertBlueBinItemMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertBlueBinItemMaster
+GO
+
+--exec sp_InsertBlueBinItemMaster '2601'
+CREATE PROCEDURE sp_InsertBlueBinItemMaster
+@ItemID varchar(32),
+@ItemDescription varchar(255),
+@ItemClinicalDescription varchar(255),
+@ItemManufacturer char(30),
+@ItemManufacturerNumber char(35),
+@ItemVendor char(30),
+@ItemVendorNumber char(9),
+@VendorItemNumber char(32),
+@StockUOM char(4)
+
+
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+if not exists(select * from bluebin.DimItem where ItemID = @ItemID)
+BEGIN
+set @ItemManufacturerNumber = isnull(@ItemManufacturerNumber,'None')
+
+insert into [bluebin].[DimItem] (ItemKey,ActiveStatus,[ItemID],ItemDescription,ItemDescription2,ItemClinicalDescription,ItemManufacturer,ItemManufacturerNumber,ItemVendor,ItemVendorNumber,VendorItemNumber,StockUOM)
+
+VALUES ((Select max(ItemKey) + 1 from bluebin.DimItem),'A',rtrim(@ItemID),@ItemDescription,@ItemClinicalDescription,@ItemClinicalDescription,@ItemManufacturer,@ItemManufacturerNumber,@ItemVendor,@ItemVendorNumber,@VendorItemNumber,@StockUOM)
+END
+
+END
+GO
+grant exec on sp_InsertBlueBinItemMaster to appusers
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteBlueBinItemMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteBlueBinItemMaster
+GO
+
+--exec sp_DeleteBlueBinItemMaster '2601'
+CREATE PROCEDURE sp_DeleteBlueBinItemMaster
+@ItemKey int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+delete from [bluebin].[DimItem] 
+
+where ItemKey = @ItemKey
+
+
+END
+GO
+grant exec on sp_DeleteBlueBinItemMaster to appusers
+GO
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditBlueBinItemMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_EditBlueBinItemMaster
+GO
+
+--exec sp_EditBlueBinItemMaster '0000001','Test','Test2'
+CREATE PROCEDURE sp_EditBlueBinItemMaster
+@ItemKey int,
+@ItemID varchar(32),
+@ItemDescription varchar(255),
+@ItemClinicalDescription varchar(255),
+@ItemManufacturer char(30),
+@ItemManufacturerNumber char(35),
+@ItemVendor char(30),
+@ItemVendorNumber char(9),
+@VendorItemNumber char(32),
+@StockUOM char(4),
+@ActiveStatus char(1),
+@BuyUOM char(4),
+@PackageString varchar(38),
+@StockLocation char(7)
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+update [bluebin].[DimItem] 
+set 
+ItemDescription = @ItemDescription,
+ItemClinicalDescription = @ItemClinicalDescription,
+ItemManufacturer = @ItemManufacturer,
+ItemManufacturerNumber = @ItemManufacturerNumber,
+ItemVendor = @ItemVendor,
+ItemVendorNumber = @ItemVendorNumber,
+VendorItemNumber = @VendorItemNumber,
+StockUOM = @StockUOM,
+ActiveStatus = @ActiveStatus,
+BuyUOM=@BuyUOM,
+PackageString=@PackageString,
+StockLocation=@StockLocation
+
+where ItemKey = @ItemKey
+
+
+END
+GO
+grant exec on sp_EditBlueBinItemMaster to appusers
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinParMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectBlueBinParMaster
+GO
+
+--exec sp_SelectBlueBinParMaster '','','17'
+CREATE PROCEDURE sp_SelectBlueBinParMaster
+@FacilityName varchar(255)
+,@LocationName varchar(255)
+,@ItemDescription varchar(255)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+
+select
+bbpm.[ParMasterID],
+bbpm.[FacilityID],
+bbf.[FacilityName],
+rtrim(bbpm.[LocationID]) as LocationID,
+ISNULL((rtrim(bblm.[LocationName])),'') as LocationName,
+rtrim(bbpm.[ItemID]) as ItemID,
+ISNULL((COALESCE(bbim.ItemClinicalDescription,bbim.ItemDescription,'None')),'') as ItemDescription,
+bbpm.[BinSequence],
+bbpm.[BinSize],
+bbpm.[BinUOM],
+bbpm.[BinQuantity],
+bbpm.[LeadTime],
+bbpm.[ItemType],
+isnull(bbim.VendorItemNumber,'') as VendorItemNumber,
+bbpm.[WHSequence],
+bbpm.[PatientCharge],
+case when bbpm.[PatientCharge] = 1 then 'Yes' else 'No' end as PatientChargeName,
+case when bbpm.[Updated] = '1' then 'Yes' else 'No' end as Updated,
+bbpm.[LastUpdated]
+from [bluebin].[BlueBinParMaster] bbpm
+	inner join [bluebin].[DimItem] bbim on rtrim(bbpm.ItemID) = rtrim(bbim.ItemID)
+		inner join [bluebin].[DimLocation] bblm on rtrim(bbpm.LocationID) = rtrim(bblm.LocationID) and bblm.BlueBinFlag = 1
+			inner join bluebin.DimFacility bbf on rtrim(bbpm.FacilityID) = rtrim(bbf.FacilityID)
+				
+				
+WHERE 
+rtrim(bblm.LocationName) LIKE '%' + @LocationName + '%' 
+		and bbf.FacilityName LIKE '%' + @FacilityName + '%' 
+			and (rtrim(bbim.ItemID) +' - ' + rtrim(bbim.ItemDescription) like '%' + @ItemDescription + '%'
+					OR
+						rtrim(bbim.ItemID) +' - ' + rtrim(bbim.ItemClinicalDescription) like '%' + @ItemDescription + '%')
+order by LocationID,ItemID
+
+END
+GO
+grant exec on sp_SelectBlueBinParMaster to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertBlueBinParMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertBlueBinParMaster
+GO
+
+--exec sp_InsertBlueBinParMaster '','',''
+CREATE PROCEDURE sp_InsertBlueBinParMaster
+@FacilityID int
+,@LocationID varchar(10)
+,@ItemID varchar(32)
+,@BinSequence varchar(50)
+,@BinUOM varchar(10)
+,@BinQuantity int
+,@LeadTime int
+,@ItemType varchar(10)
+,@WHSequence varchar(50)
+,@PatientCharge int
+
+--& txtFacilityName & "','" & txtLocationName & "','" & txtItemDescription & "','" & txtItemDescription & "','" & txtBinSequence & "','" & txtBinUOM & "','" & txtBinQuantity & "','" & txtLeadTime & "','" & txtItemType & "','" & txtWHLocationID & "','" & txtWHSequence & "','" & txtPatientCharge & "'"
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+if not exists(select * from [bluebin].[BlueBinParMaster] WHERE rtrim(LocationID) = rtrim(@LocationID) and rtrim(ItemID) = rtrim(@ItemID) and FacilityID = @FacilityID)
+BEGIN
+
+declare @BinSize varchar(5) = right(@BinSequence,3)
+insert [bluebin].[BlueBinParMaster] (FacilityID,LocationID,ItemID,BinSequence,BinSize,BinUOM,BinQuantity,LeadTime,ItemType,WHLocationID,WHSequence,PatientCharge,Updated,LastUpdated)
+VALUES(
+@FacilityID,
+@LocationID,
+@ItemID,
+@BinSequence,
+@BinSize,
+@BinUOM,
+@BinQuantity,
+@LeadTime,
+@ItemType,
+'',
+@WHSequence,
+@PatientCharge,
+0,
+getdate()
+
+) 
+END
+
+
+END
+GO
+grant exec on sp_InsertBlueBinParMaster to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteBlueBinParMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteBlueBinParMaster
+GO
+
+--exec sp_DeleteBlueBinParMaster '','',''
+CREATE PROCEDURE sp_DeleteBlueBinParMaster
+@ParMasterID int
+--@FacilityID int
+--,@LocationID varchar(10)
+--,@ItemID varchar(32)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+delete from [bluebin].[BlueBinParMaster] 
+WHERE ParMasterID = @ParMasterID 
+--WHERE rtrim(LocationID) = rtrim(@LocationID)
+--	and rtrim(ItemID) = rtrim(@ItemID)
+--		and FacilityID = @FacilityID 
+
+
+END
+GO
+grant exec on sp_DeleteBlueBinParMaster to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditBlueBinParMaster') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_EditBlueBinParMaster
+GO
+
+--exec sp_EditBlueBinParMaster '','',''
+CREATE PROCEDURE sp_EditBlueBinParMaster
+@ParMasterID int
+,@FacilityID int
+,@LocationID varchar(10)
+,@ItemID varchar(32)
+, @BinSequence varchar(15)
+,@BinUOM varchar(10)
+,@BinQuantity decimal(13,4)
+,@LeadTime int
+,@ItemType varchar(20)
+,@WHSequence varchar(50)
+,@PatientCharge int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+update [bluebin].[BlueBinParMaster] 
+set BinSequence = @BinSequence,
+	BinSize = right(@BinSequence,3),
+	BinUOM = @BinUOM,
+	BinQuantity = @BinQuantity,
+	LeadTime = @LeadTime,
+	ItemType = @ItemType,
+	WHSequence = @WHSequence,
+	PatientCharge = @PatientCharge,
+	LastUpdated = getdate()
+	WHERE ParMasterID = @ParMasterID
+--WHERE rtrim(LocationID) = rtrim(@LocationID)
+--	and rtrim(ItemID) = rtrim(@ItemID)
+--		and FacilityID = @FacilityID 
+
+
+END
+GO
+grant exec on sp_EditBlueBinParMaster to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectItemIDDescription') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectItemIDDescription
+GO
+
+--exec sp_SelectItemIDDescription
+CREATE PROCEDURE sp_SelectItemIDDescription
+
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+SELECT 
+DISTINCT rtrim([ItemID]) as ItemID,
+[ItemDescription],rTrim(ItemID)
+	+ ' - ' + 
+		COALESCE(ItemDescription,ItemClinicalDescription,'No Description') as ExtendedDescription 
+FROM bluebin.[DimItem]
+
+END
+GO
+grant exec on sp_SelectItemIDDescription to appusers
+GO
 
 
 Print 'Main Sproc Add/Updates Complete'
@@ -4288,7 +5149,7 @@ from dbo.REQLINE,
 		from bluebin.FactBinSnapshot
 		where LastScannedDate > getdate() -7
 		) db 
-where CREATION_DATE > getdate() -7
+where CREATION_DATE > getdate() -7 and left(REQ_LOCATION,2) in (select ConfigValue from bluebin.Config where ConfigName = ''REQ_LOCATION'')
 group by 	
 	db.[MaxSnapshotDate],
 	db.[DBUpToDate?]
@@ -4323,6 +5184,26 @@ Print 'Keys and Constraints Complete'
 --*************************************************************************************************************************************************
 --General CleanUp
 --*************************************************************************************************************************************************
+
+
+if not exists (select * from sys.indexes where name = 'DimItemIndex')
+BEGIN
+CREATE INDEX DimItemIndex ON bluebin.DimItem (ItemKey,ItemID)
+END
+GO
+if not exists (select * from sys.indexes where name = 'DimLocationIndex')
+BEGIN
+CREATE INDEX DimLocationIndex ON bluebin.DimLocation (LocationKey,LocationID)
+END
+GO
+if not exists (select * from sys.indexes where name = 'ParMasterIndex')
+BEGIN
+	if exists (select * from sys.tables where name = 'BlueBinParMaster')
+	BEGIN
+	CREATE INDEX ParMasterIndex ON bluebin.BlueBinParMaster (LocationID,ItemID)
+	END
+END
+GO
 
 
 if not exists (select * from bluebin.Config where ConfigName = 'TableauURL')
@@ -4368,7 +5249,7 @@ Print 'Job Updates Complete'
 --Version Update
 --*************************************************************************************************************************************************
 
-declare @version varchar(50) = '2.2.20160201' --Update Version Number here
+declare @version varchar(50) = '2.2.20160318' --Update Version Number here
 
 
 if not exists (select * from bluebin.Config where ConfigName = 'Version')
@@ -4379,4 +5260,5 @@ ELSE
 Update bluebin.Config set ConfigValue = @version where ConfigName = 'Version'
 
 Print 'Version Updated to ' + @version
+Print 'DB: ' + DB_NAME() + ' updated'
 GO

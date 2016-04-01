@@ -18,10 +18,10 @@ SET NOCOUNT ON
 insert into bluebin.[Image] 
 (ImageName,ImageType,ImageSource,ImageSourceID,[Image],[Active],[DateCreated],[LastUpdated])        
 VALUES 
-(@ImageName,@ImageType,@ImageSource,(select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceID)))),@Image,1,getdate(),getdate())
+(@ImageName,@ImageType,@ImageSource,(select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceID)))),@Image,1,getdate(),getdate())
 
 ;
-declare @ImageSourcePH int = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceID))))
+declare @ImageSourcePH int = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)))+convert(varchar,@ImageSourceID))))
 declare @Text varchar(60) = 'Insert Image - '+@ImageName
 
 exec sp_InsertMasterLog @UserLogin,'Gemba',@Text,@ImageSourcePH

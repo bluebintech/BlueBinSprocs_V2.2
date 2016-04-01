@@ -14,7 +14,7 @@ SET NOCOUNT ON
 
 
 Insert into bluebin.MasterLog ([BlueBinUserID],[ActionType],[ActionName],[ActionID],[ActionDateTime]) Values
-((select BlueBinUserID from bluebin.BlueBinUser where [UserLogin] = @UserLogin),@ActionType,@ActionName,@ActionID,getdate())
+((select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin)),@ActionType,@ActionName,@ActionID,getdate())
 
 END
 GO

@@ -44,7 +44,7 @@ if not exists (select * from bluebin.BlueBinTraining where Active = 1 and BlueBi
 	@Form3009,
 	@Form3010,
 	1, --Default Active to Yes
-	(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Updater),
+	(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
 	getdate()
 
 	;

@@ -6,7 +6,7 @@ GO
 
 CREATE PROCEDURE sp_EditGembaAuditNode
 @GembaAuditNodeID int,
-@Location char(5),
+@Location char(10),
 @AdditionalComments varchar(max),
 @PS_EmptyBins int,
 @PS_BackBins int,
@@ -39,7 +39,7 @@ CREATE PROCEDURE sp_EditGembaAuditNode
 @SS_TotalScore int,
 @NIS_TotalScore int,
 @TotalScore int
-			,@Auditer varchar(255),@ImageSourceIDPH int
+			,LOWER(@Auditer) varchar(255),@ImageSourceIDPH int
 
 
 --WITH ENCRYPTION
@@ -91,11 +91,11 @@ exec sp_UpdateImages @GembaAuditNodeID,@Auditer,@ImageSourceIDPH
 update bluebin.MasterLog 
 set ActionID = @GembaAuditNodeID 
 where ActionType = 'Gemba' and 
-		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer) and 
-			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer))+convert(varchar,@ImageSourceIDPH))))
---if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)) and 
+			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)))+convert(varchar,@ImageSourceIDPH))))
+--if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
 --	BEGIN
---	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+--	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
 --	END
 END
 GO

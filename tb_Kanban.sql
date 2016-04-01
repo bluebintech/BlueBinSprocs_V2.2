@@ -18,7 +18,7 @@ BEGIN CATCH
 END CATCH
 
 
-SELECT DimBin.BinKey,
+SELECT distinct DimBin.BinKey,
        DimBin.LocationID,
        DimBin.ItemID,
        DimBin.BinSequence,

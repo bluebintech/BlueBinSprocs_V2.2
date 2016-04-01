@@ -10,7 +10,7 @@ BEGIN
 	  
      
       SELECT @BlueBinUserID = BlueBinUserID
-      FROM [bluebin].[BlueBinUser] WHERE UserLogin = @UserLogin --(HASHBYTES('SHA1', @oldpwdHash))--@Password
+      FROM [bluebin].[BlueBinUser] WHERE LOWER(UserLogin) = LOWER(@UserLogin) --(HASHBYTES('SHA1', @oldpwdHash))--@Password
      
       IF @BlueBinUserID IS NOT NULL  
       BEGIN
@@ -19,7 +19,7 @@ BEGIN
 
 			insert @table exec sp_GeneratePassword 8 
 			set @RandomPassword = (Select p from @table)
-			insert @UserTable (BlueBinUserID,UserLogin,pwd,created) VALUES (@BlueBinUserID,@UserLogin,@RandomPassword,getdate())
+			insert @UserTable (BlueBinUserID,UserLogin,pwd,created) VALUES (@BlueBinUserID,LOWER(@UserLogin),@RandomPassword,getdate())
 			set @newpwdHash = convert(varbinary(max),rtrim(@RandomPassword))
 
 						UPDATE [bluebin].[BlueBinUser]

@@ -4,7 +4,7 @@ GO
 
 
 
-CREATE PROCEDURE tb_LineVolume
+CREATE PROCEDURE exec tb_LineVolume
 
 
 AS
@@ -24,6 +24,7 @@ SELECT CREATION_DATE   AS Date,
        a.REQ_LOCATION  AS Location,
        b.NAME          AS LocationName,
        1               AS LineCount
+
 FROM   REQLINE a
        INNER JOIN RQLOC b
                ON a.COMPANY = b.COMPANY
@@ -31,6 +32,7 @@ FROM   REQLINE a
        INNER JOIN GLNAMES c
                ON b.COMPANY = c.COMPANY
                   AND b.ISS_ACCT_UNIT = c.ACCT_UNIT 
+order by 2
 END
 GO
 grant exec on tb_LineVolume to public

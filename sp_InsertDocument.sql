@@ -16,6 +16,8 @@ BEGIN
 SET NOCOUNT ON
 if not exists (select * from bluebin.Document where DocumentName = @DocumentName and DocumentSource = @DocumentSource)
 BEGIN
+set @UserLogin = LOWER(@UserLogin)
+
 insert into bluebin.[Document] 
 (DocumentName,DocumentType,DocumentSource,[Document],[Active],[DateCreated],[LastUpdated])        
 VALUES 

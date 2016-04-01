@@ -5,7 +5,7 @@ GO
 --exec sp_InsertQCN 
 
 CREATE PROCEDURE sp_InsertQCN
-@LocationID varchar(5),
+@LocationID varchar(10),
 @ItemID varchar(32),
 @Requester varchar(255),
 @Assigned varchar(255),
@@ -20,7 +20,7 @@ CREATE PROCEDURE sp_InsertQCN
 AS
 BEGIN
 SET NOCOUNT ON
-
+set @UserLogin = LOWER(@UserLogin)
 Declare @QCNID int
 
 insert into [qcn].[QCN] 

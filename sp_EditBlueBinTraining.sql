@@ -40,7 +40,7 @@ set
 	Form3008 = @Form3008,
 	Form3009 = @Form3009,
 	Form3010 = @Form3010,
-	BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Updater),
+	BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
 	LastUpdated = getdate()
 where BlueBinTrainingID = @BlueBinTrainingID
 	;

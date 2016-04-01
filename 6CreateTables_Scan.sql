@@ -15,7 +15,7 @@ if not exists (select * from sys.tables where name = 'ScanBatch')
 BEGIN
 CREATE TABLE [scan].[ScanBatch](
 	[ScanBatchID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
-	[LocationID] char(7) NOT NULL,
+	[LocationID] char(10) NOT NULL,
 	[BlueBinUserID] int NOT NULL,
 	[Active] int NOT NULL,
 	[Extracted] int NOT NULL,

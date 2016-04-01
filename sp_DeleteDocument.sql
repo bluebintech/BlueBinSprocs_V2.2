@@ -13,6 +13,8 @@ CREATE PROCEDURE sp_DeleteDocument
 AS
 BEGIN
 SET NOCOUNT ON
+
+set @UserLogin = LOWER(@UserLogin)
 delete
 from bluebin.[Document]    
 where 

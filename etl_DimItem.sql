@@ -35,16 +35,45 @@ END Catch
 
 /**************		CREATE Temp Tables			*******************/
 
-
-SELECT ITEM,
-       USER_FIELD3 AS ClinicalDescription
+SELECT ITEM,max(ClinicalDescription) as ClinicalDescription
 INTO   #ClinicalDescriptions
-FROM   ITEMLOC
-WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
-       AND Len(Ltrim(USER_FIELD3)) > 0
-	   
+FROM
+(
+SELECT 
+	a.ITEM,
+	case 
+		when b.ClinicalDescription is null or b.ClinicalDescription = ''  then
+		case
+			when a.USER_FIELD3 is null or a.USER_FIELD3 = ''  then
+			case	
+				when a.USER_FIELD1 is null or a.USER_FIELD1 = '' then '*NEEDS*' 
+			else a.USER_FIELD1 end
+		else a.USER_FIELD3 end
+	else b.ClinicalDescription		
+		end	as ClinicalDescription
 
-SELECT ITEM,
+FROM 
+(SELECT 
+	ITEM,
+	USER_FIELD1,
+	USER_FIELD3
+FROM ITEMLOC a 
+INNER JOIN RQLOC b ON a.LOCATION = b.REQ_LOCATION 
+WHERE LEFT(REQ_LOCATION, 2) IN (SELECT [ConfigValue] FROM   [bluebin].[Config] WHERE  [ConfigName] = 'REQ_LOCATION' AND Active = 1)) a
+LEFT JOIN 
+(SELECT 
+	distinct ITEM, 
+	USER_FIELD3 as ClinicalDescription
+FROM ITEMLOC 
+WHERE LOCATION IN (SELECT [ConfigValue] FROM [bluebin].[Config] WHERE  [ConfigName] = 'LOCATION' AND Active = 1) AND LEN(LTRIM(USER_FIELD3)) > 0
+) b
+ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(b.ITEM))
+--WHERE a.ITEM = '53353'
+) a
+Group by ITEM
+	  
+
+SELECT distinct ITEM,
        Max(PO_DATE) AS LAST_PO_DATE
 INTO   #LastPO
 FROM   POLINE a
@@ -52,17 +81,18 @@ FROM   POLINE a
                ON a.PO_NUMBER = b.PO_NUMBER
                   AND a.COMPANY = b.COMPANY
                   AND a.PO_CODE = b.PO_CODE
-				   
+			   
 GROUP  BY ITEM
 
-SELECT ITEM,
+
+SELECT distinct ITEM,
        PREFER_BIN
 INTO   #StockLocations
 FROM   ITEMLOC
-WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
 
 
-SELECT a.ITEM,
+SELECT distinct  a.ITEM,
        a.VENDOR,
        a.VEN_ITEM,
        a.UOM,
@@ -86,6 +116,7 @@ WHERE  a.HOLD_FLAG = 'N'
 
 
 /*********************		CREATE DimItem		**************************************/
+                      
 
 
 SELECT Row_number()
@@ -93,10 +124,10 @@ SELECT Row_number()
            ORDER BY a.ITEM)                AS ItemKey,
        a.ITEM                              AS ItemID,
        a.DESCRIPTION                       AS ItemDescription,
-	   a.DESCRIPTION2					AS ItemDescription2,
+	   a.DESCRIPTION2					   AS ItemDescription2,
        e.ClinicalDescription               AS ItemClinicalDescription,
        a.ACTIVE_STATUS                     AS ActiveStatus,
-       a.MANUF_NBR                         AS ItemManufacturer,
+       a.MANUF_NBR                         AS ItemManufacturer, --b.DESCRIPTION
        a.MANUF_NBR                         AS ItemManufacturerNumber,
        d.VENDOR_VNAME                      AS ItemVendor,
        c.VENDOR                            AS ItemVendorNumber,
@@ -108,25 +139,24 @@ SELECT Row_number()
        CONVERT(VARCHAR, Cast(h.UOM_MULT AS INT))
        + ' EA' + '/'+Ltrim(Rtrim(h.UOM)) AS PackageString
 INTO   bluebin.DimItem
-FROM   ITEMMAST a
+FROM   ITEMMAST a 
        --LEFT JOIN ICMANFCODE b
        --       ON a.MANUF_CODE = b.MANUF_CODE
-       LEFT JOIN ITEMSRC c
-              ON a.ITEM = c.ITEM
+       LEFT JOIN ITEMSRC c 
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(c.ITEM))
                  AND c.REPLENISH_PRI = 1
                  AND c.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
-       LEFT JOIN APVENMAST d
-              ON c.VENDOR = d.VENDOR
+       LEFT JOIN (select distinct VENDOR_GROUP,VENDOR,VENDOR_VNAME from APVENMAST) d 
+              ON ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(d.VENDOR))
        LEFT JOIN #ClinicalDescriptions e
-              ON a.ITEM = e.ITEM
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(e.ITEM))
        LEFT JOIN #LastPO f
-              ON a.ITEM = f.ITEM
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(f.ITEM))
        LEFT JOIN #StockLocations g
-              ON a.ITEM = g.ITEM
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(g.ITEM))
        LEFT JOIN #ItemContract h
-              ON a.ITEM = h.ITEM
-                 AND c.VENDOR = h.VENDOR
-	   where a.ITEM = '1046'
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(h.ITEM)) AND ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(h.VENDOR))
+order by a.ITEM
 
 
 /*********************		DROP Temp Tables	*********************************/

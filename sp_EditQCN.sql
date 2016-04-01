@@ -6,7 +6,7 @@ GO
 
 CREATE PROCEDURE sp_EditQCN
 @QCNID int,
-@LocationID varchar(5),
+@LocationID varchar(10),
 @ItemID varchar(32),
 @Requester varchar(255),
 @Assigned varchar(255),

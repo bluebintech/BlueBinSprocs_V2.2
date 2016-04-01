@@ -10,7 +10,7 @@ exec sp_InsertScanBatch @Location,@Scanner
 */
 
 CREATE PROCEDURE sp_InsertScanBatch
-@Location char(7),
+@Location char(10),
 @Scanner varchar(255)
 
 
@@ -22,7 +22,7 @@ SET NOCOUNT ON
 insert into scan.ScanBatch (LocationID,BlueBinUserID,Active,ScanDateTime,Extracted)
 select 
 @Location,
-(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Scanner),
+(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Scanner)),
 1, --Default Active to Yes
 getdate(),
 0 --Default Extracted to No

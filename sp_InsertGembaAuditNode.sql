@@ -5,8 +5,8 @@ GO
 --exec sp_InsertGembaAuditNode 'TEST'
 
 CREATE PROCEDURE sp_InsertGembaAuditNode
-@Location char(5),
-@Auditer varchar(255),
+@Location char(10),
+LOWER(@Auditer) varchar(255),
 @AdditionalComments varchar(max),
 @PS_EmptyBins int,
 @PS_BackBins int,
@@ -92,7 +92,7 @@ VALUES
 (
 getdate(),  --Date
 @Location,
-(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer),
+(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)),
 @AdditionalComments,
 @PS_EmptyBins,
 @PS_BackBins,
@@ -137,11 +137,11 @@ exec sp_UpdateImages @GembaAuditNodeID,@Auditer,@ImageSourceIDPH
 update bluebin.MasterLog 
 set ActionID = @GembaAuditNodeID 
 where ActionType = 'Gemba' and 
-		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer) and 
-			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @Auditer))+convert(varchar,@ImageSourceIDPH))))
---if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+		BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)) and 
+			ActionID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Auditer)))+convert(varchar,@ImageSourceIDPH))))
+--if exists(select * from bluebin.[Image] where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
 --	BEGIN
---	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
+--	update [bluebin].[Image] set ImageSourceID = @GembaAuditNodeID where ImageSourceID = (select convert(int,(convert(varchar,(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = @UserLogin))+convert(varchar,@ImageSourceIDPH))))
 --	END
 
 END

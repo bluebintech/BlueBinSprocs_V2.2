@@ -19,7 +19,7 @@ BEGIN
 	  @LastLoginDate = LastLoginDate, 
 	  @MustChangePassword = 
 		case when LastUpdated  + PasswordExpires < getdate() then 1 else MustChangePassword end  --Password Expiration Date or if flag set
-      FROM [bluebin].[BlueBinUser] WHERE UserLogin = @UserLogin AND [Password] = (HASHBYTES('SHA1', @pwdHash))--@Password
+      FROM [bluebin].[BlueBinUser] WHERE LOWER(UserLogin) = LOWER(@UserLogin) AND [Password] = (HASHBYTES('SHA1', @pwdHash))--@Password
      
       IF @UserLogin IS NOT NULL  
       BEGIN
