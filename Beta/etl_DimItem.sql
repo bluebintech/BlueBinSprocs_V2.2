@@ -5,32 +5,32 @@
 
 --******************************************/
 
---IF EXISTS ( SELECT  *
---            FROM    sys.objects
---            WHERE   object_id = OBJECT_ID(N'etl_DimItem')
---                    AND type IN ( N'P', N'PC' ) ) 
+IF EXISTS ( SELECT  *
+            FROM    sys.objects
+            WHERE   object_id = OBJECT_ID(N'etl_DimItem')
+                    AND type IN ( N'P', N'PC' ) ) 
 
---DROP PROCEDURE  etl_DimItem
---GO
-
-
---CREATE PROCEDURE etl_DimItem
-
---AS
-
---/**************		SET BUSINESS RULES		***************/
+DROP PROCEDURE  etl_DimItem
+GO
 
 
+CREATE PROCEDURE etl_DimItem
+
+AS
+
+/**************		SET BUSINESS RULES		***************/
 
 
---/**************		DROP DimItem			***************/
 
---BEGIN Try
---    DROP TABLE bluebin.DimItem
---END Try
 
---BEGIN Catch
---END Catch
+/**************		DROP DimItem			***************/
+
+BEGIN Try
+    DROP TABLE bluebin.DimItem
+END Try
+
+BEGIN Catch
+END Catch
 
 
 /**************		CREATE Temp Tables			*******************/
@@ -138,7 +138,7 @@ SELECT Row_number()
        h.UOM                               AS BuyUOM,
        CONVERT(VARCHAR, Cast(h.UOM_MULT AS INT))
        + ' EA' + '/'+Ltrim(Rtrim(h.UOM)) AS PackageString
---INTO   bluebin.DimItem
+INTO   bluebin.DimItem
 FROM   ITEMMAST a 
        --LEFT JOIN ICMANFCODE b
        --       ON a.MANUF_CODE = b.MANUF_CODE
@@ -164,7 +164,7 @@ order by a.ITEM
 
 /*********************		DROP Temp Tables	*********************************/
 
-/*
+
 DROP TABLE #ClinicalDescriptions
 
 DROP TABLE #LastPO
@@ -172,12 +172,12 @@ DROP TABLE #LastPO
 DROP TABLE #StockLocations
 
 DROP TABLE #ItemContract
-*/
---GO
 
---UPDATE etl.JobSteps
---SET LastModifiedDate = GETDATE()
---WHERE StepName = 'DimItem'
---GO
+GO
+
+UPDATE etl.JobSteps
+SET LastModifiedDate = GETDATE()
+WHERE StepName = 'DimItem'
+GO
 
 

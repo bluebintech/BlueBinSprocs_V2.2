@@ -310,11 +310,13 @@ FROM   POLINE a
 GROUP  BY ITEM
 
 
-SELECT distinct ITEM,
+SELECT distinct LOCATION,
+		ITEM,
        PREFER_BIN
 INTO   #StockLocations
 FROM   ITEMLOC
-WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
+WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')  
+
 
 
 SELECT distinct  a.ITEM,
@@ -363,7 +365,7 @@ SELECT Row_number()
        h.UOM                               AS BuyUOM,
        CONVERT(VARCHAR, Cast(h.UOM_MULT AS INT))
        + ' EA' + '/'+Ltrim(Rtrim(h.UOM)) AS PackageString
-INTO   bluebin.DimItem
+--INTO   bluebin.DimItem
 FROM   ITEMMAST a 
        --LEFT JOIN ICMANFCODE b
        --       ON a.MANUF_CODE = b.MANUF_CODE
@@ -371,6 +373,7 @@ FROM   ITEMMAST a
               ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(c.ITEM))
                  AND c.REPLENISH_PRI = 1
                  AND c.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+				 AND c.REPL_FROM_LOC = ''
        LEFT JOIN (select distinct VENDOR_GROUP,VENDOR,VENDOR_VNAME from APVENMAST) d 
               ON ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(d.VENDOR))
        LEFT JOIN #ClinicalDescriptions e
@@ -378,12 +381,14 @@ FROM   ITEMMAST a
        LEFT JOIN #LastPO f
               ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(f.ITEM))
        LEFT JOIN #StockLocations g
-              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(g.ITEM))
+              ON ltrim(rtrim(c.ITEM)) = ltrim(rtrim(g.ITEM)) and c.LOCATION = g.LOCATION
        LEFT JOIN #ItemContract h
               ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(h.ITEM)) AND ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(h.VENDOR))
 order by a.ITEM
 
 
+update bluebin.Config set ConfigValue = 'SSC' where ConfigName = 'LOCATION' and ConfigValue = 'STORE'
+update bluebin.Config set ConfigValue = 'STORE' where ConfigName = 'LOCATION' and ConfigValue = 'SSC'
 /*********************		DROP Temp Tables	*********************************/
 
 
