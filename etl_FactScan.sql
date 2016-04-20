@@ -37,7 +37,7 @@ SELECT COMPANY,
 INTO #ICTRANS
 FROM   ICTRANS a
        INNER JOIN bluebin.DimLocation b
-               ON a.FROM_TO_LOC = b.LocationID
+               ON a.FROM_TO_LOC = b.LocationID 
 WHERE b.BlueBinFlag = 1
 
 SELECT COMPANY,
@@ -55,6 +55,7 @@ SELECT COMPANY,
        QUANTITY,
        ITEM_TYPE,
        CREATION_TIME,
+	   CLOSED_FL,
        Cast(CONVERT(VARCHAR, CREATION_DATE, 101) + ' '
             + LEFT(RIGHT('00000' + CONVERT(VARCHAR, CREATION_TIME), 8), 2)
             + ':'
@@ -67,6 +68,7 @@ WHERE  STATUS = 9
        AND KILL_QUANTITY = 0
 
 SELECT 
+a.COMPANY,
 		CASE
 			WHEN LEN(a.SOURCE_DOC_N) = 10 and LEFT(a.SOURCE_DOC_N,6) = '000000' THEN RIGHT(a.SOURCE_DOC_N,4)
 			WHEN LEN(a.SOURCE_DOC_N) = 10 and LEFT(a.SOURCE_DOC_N,5) = '00000' THEN RIGHT(a.SOURCE_DOC_N,5)
@@ -81,14 +83,39 @@ SELECT
             + Substring(RIGHT('00000' + CONVERT(VARCHAR, case when b.UPDATE_TIME is null then '00000000' else b.UPDATE_TIME end), 8), 3, 2)
             + ':'
             + Substring(RIGHT('00000' + CONVERT(VARCHAR, case when b.UPDATE_TIME is null then '00000000' else b.UPDATE_TIME end), 8), 5, 2) AS DATETIME)) AS REC_DATE
+
 INTO #POLINE
 FROM   POLINESRC a
-       INNER JOIN PORECLINE b
+       LEFT JOIN PORECLINE b
                ON a.PO_NUMBER = b.PO_NUMBER
-                  AND a.LINE_NBR = b.PO_LINE_NBR 
+                  AND a.LINE_NBR = b.PO_LINE_NBR
+					AND a.COMPANY = b.COMPANY
+--where SOURCE_DOC_N = '303253'
 GROUP BY
+	a.COMPANY,
 	a.SOURCE_DOC_N,
 	a.SRC_LINE_NBR
+
+
+
+Select
+b.COMPANY,
+CASE
+			WHEN LEN(a.SOURCE_DOC_N) = 10 and LEFT(a.SOURCE_DOC_N,6) = '000000' THEN RIGHT(a.SOURCE_DOC_N,4)
+			WHEN LEN(a.SOURCE_DOC_N) = 10 and LEFT(a.SOURCE_DOC_N,5) = '00000' THEN RIGHT(a.SOURCE_DOC_N,5)
+			WHEN LEN(a.SOURCE_DOC_N) = 10 and LEFT(a.SOURCE_DOC_N,4) = '0000' THEN RIGHT(a.SOURCE_DOC_N,6)
+			WHEN LEN(a.SOURCE_DOC_N) = 10 and LEFT(a.SOURCE_DOC_N,3) = '000' THEN RIGHT(a.SOURCE_DOC_N,7)	
+		ELSE a.SOURCE_DOC_N 
+		END AS REQ_NUMBER,
+        a.SRC_LINE_NBR                                                                         AS LINE_NBR, 
+		CLOSE_DATE   as CancelDate
+INTO #CancelledLines
+FROM POLINE b
+INNER JOIN POLINESRC a on b.COMPANY = a.COMPANY and b.PO_NUMBER = a.PO_NUMBER AND b.LINE_NBR = a.LINE_NBR
+WHERE b.CXL_QTY = b.QUANTITY and b.CLOSED_FL = 'Y'
+
+
+
 
 SELECT Row_number()
          OVER(
@@ -111,9 +138,12 @@ SELECT Row_number()
        a.CREATION_DATE               AS OrderDate,
        CASE
          WHEN a.ITEM_TYPE = 'I' THEN e.TRANS_DATE
-         WHEN a.ITEM_TYPE = 'N' THEN c.REC_DATE
+         WHEN a.ITEM_TYPE = 'N' THEN c.REC_DATE 
          ELSE NULL
-       END                           AS OrderCloseDate
+       END                           AS OrderCloseDate,
+	   case 
+	   when a.CLOSED_FL = 'Y' and c.REQ_NUMBER is null then a.CREATION_DATE
+	   else d.CancelDate end as OrderCancelDate
 INTO   #tmpScan
 FROM   #REQLINE a
        INNER JOIN bluebin.DimBin b
@@ -123,10 +153,15 @@ FROM   #REQLINE a
        LEFT JOIN #POLINE c 
 			ON a.REQ_NUMBER = c.REQ_NUMBER 
 			AND a.LINE_NBR = c.LINE_NBR
+			--AND a.COMPANY = c.COMPANY		--Remove case if Multiple Companies
        LEFT JOIN #ICTRANS e
-              ON a.COMPANY = e.COMPANY
-                 AND a.REQ_NUMBER = e.DOCUMENT
-                 AND a.LINE_NBR = e.LINE_NBR 
+               ON a.REQ_NUMBER = e.DOCUMENT
+               AND a.LINE_NBR = e.LINE_NBR
+			--AND a.COMPANY = e.COMPANY		--Remove case if Multiple Companies
+		LEFT JOIN #CancelledLines d 
+			ON a.REQ_NUMBER = d.REQ_NUMBER 
+			AND a.LINE_NBR = d.LINE_NBR
+			--and a.COMPANY = d.COMPANY		--Remove case if Multiple Companies
 
 
 /***********************************		CREATE FactScan		****************************************/
@@ -144,16 +179,16 @@ SELECT a.Scanseq,
        a.OrderUOM,
        Cast(a.OrderQty AS INT) AS OrderQty,
        a.OrderDate,
-       a.OrderCloseDate,
+       case when a.OrderCancelDate is not null then a.OrderCancelDate else a.OrderCloseDate end as OrderCloseDate,
        b.OrderDate             AS PrevOrderDate,
-       b.OrderCloseDate        AS PrevOrderCloseDate,
+       case when b.OrderCancelDate is not null then b.OrderCancelDate else b.OrderCloseDate end AS PrevOrderCloseDate,
        1                       AS Scan,
        CASE
          WHEN Datediff(Day, b.OrderDate, a.OrderDate) < 3 THEN 1
          ELSE 0
        END                     AS HotScan,
        CASE
-         WHEN a.OrderDate < COALESCE(b.OrderCloseDate, Getdate())
+         WHEN a.OrderDate < COALESCE(b.OrderCloseDate, b.OrderCancelDate, Getdate())
               AND a.ScanHistseq > 2 THEN 1
          ELSE 0
        END                     AS StockOut
@@ -168,13 +203,14 @@ FROM   #tmpScan a
        LEFT JOIN bluebin.DimItem d
               ON a.ItemID = d.ItemID 
 
-
+order by a.BinKey,a.OrderDate
 /*****************************************		DROP Temp Tables		*******************************/
 
 DROP TABLE #REQLINE
 DROP TABLE #ICTRANS
 DROP TABLE #POLINE
 DROP TABLE #tmpScan
+DROP TABLE #CancelledLines
 
 GO
 

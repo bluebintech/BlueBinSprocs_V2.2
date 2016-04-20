@@ -2,7 +2,8 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinI
 drop procedure sp_SelectBlueBinItemMaster
 GO
 
---exec sp_SelectBlueBinItemMaster '2601'
+
+--exec sp_SelectBlueBinItemMaster '',''
 CREATE PROCEDURE sp_SelectBlueBinItemMaster
 @ItemDescription varchar(255),
 @Manufacturer varchar(255)
@@ -29,6 +30,7 @@ PackageString,
 StockLocation
 from  [bluebin].[DimItem]
 WHERE 
+--ItemID in (select ItemID from bluebin.DimBin) and 
 	rtrim(ItemManufacturerNumber) +' - ' + rtrim(ItemManufacturer) like '%' + @Manufacturer + '%'
 	AND
 	rtrim(ItemID) +' - ' + rtrim(ItemDescription) like '%' + @ItemDescription + '%'

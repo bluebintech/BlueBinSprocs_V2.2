@@ -1,17 +1,19 @@
-IF EXISTS ( SELECT  *
-            FROM    sys.objects
-            WHERE   object_id = OBJECT_ID(N'tb_Training')
-                    AND type IN ( N'P', N'PC' ) ) 
-
-DROP PROCEDURE  tb_Training
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectTraining
 GO
 
-CREATE PROCEDURE tb_Training
+--select * from bluebin.Training  select * from bluebin.BlueBinResource
+--exec sp_SelectTraining '','300'
+CREATE PROCEDURE sp_SelectTraining
+@Name varchar (30),
+@Module varchar (50)
 
+
+--WITH ENCRYPTION
 AS
-
+BEGIN
+SET NOCOUNT ON
 SELECT 
-
 bbt.[TrainingID],
 bbt.[BlueBinResourceID], 
 bbr.[LastName] + ', ' +bbr.[FirstName] as ResourceName, 
@@ -33,12 +35,14 @@ left join [bluebin].[BlueBinUser] bbu on bbt.[BlueBinUserID] = bbu.[BlueBinUserI
 left join (select BlueBinResourceID,count(*) as Ct from [bluebin].[Training] where Active = 1 and Status = 'Trained' group by BlueBinResourceID) trained on bbt.[BlueBinResourceID] = trained.[BlueBinResourceID]
 left join (select BlueBinResourceID,count(*) as Ct from [bluebin].[Training] where Active = 1 and Status <> 'Trained' group by BlueBinResourceID) nottrained on bbt.[BlueBinResourceID] = nottrained.[BlueBinResourceID]
 WHERE 
-bbt.Active = 1 
-
+bbt.Active = 1 and 
+bbtm.ModuleName like '%' + @Module + '%' and 
+(bbr.[LastName] like '%' + @Name + '%' 
+	OR bbr.[FirstName] like '%' + @Name + '%') 
 	
 ORDER BY bbr.[LastName]
+END
 
 GO
-
-grant exec on tb_Training to public
+grant exec on sp_SelectTraining to appusers
 GO

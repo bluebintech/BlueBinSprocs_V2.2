@@ -75,8 +75,9 @@ FROM   POLINE a
 				 AND a.PO_RELEASE = d.PO_RELEASE
 WHERE  b.PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE') 
 		--AND b.PO_RELEASE = 0
-       AND a.CXL_QTY = 0; 
-
+       AND a.CXL_QTY = 0
+	   
+	   
 
 
 --#tmpMMDIST
@@ -93,7 +94,7 @@ WHERE  SYSTEM_CD = 'PO'
        AND DOC_TYPE = 'PT'
        AND DOC_NUMBER IN (SELECT PO_NUMBER
                           FROM   PURCHORDER
-                          WHERE  PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE')); 
+                          WHERE  PO_DATE >= (select ConfigValue from bluebin.Config where ConfigName = 'PO_DATE'))
 
 --#tmpPOStatus
 SELECT Row_number()
@@ -185,9 +186,10 @@ SELECT *,
          WHEN PODeliveryStatus = 'Late' THEN 1
          ELSE 0
        END AS Late
+
 INTO   tableau.Sourcing 
 FROM   #tmpPOs
-LEFT JOIN bluebin.DimLocation dl on PurchaseLocation = dl.LocationID
+LEFT JOIN bluebin.DimLocation dl on PurchaseLocation = dl.LocationID 
 
 /***********************		DROP Temp Tables	**************************/
 

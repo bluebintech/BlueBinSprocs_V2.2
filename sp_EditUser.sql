@@ -16,7 +16,8 @@ CREATE PROCEDURE sp_EditUser
 @PasswordExpires int,
 @Password varchar(50),
 @RoleName  varchar(30),
-@Title varchar(50)
+@Title varchar(50),
+@GembaTier varchar(50)
 
 
 --WITH ENCRYPTION
@@ -38,7 +39,8 @@ IF (@Password = '' or @Password is null)
         MustChangePassword = @MustChangePassword,
         PasswordExpires = @PasswordExpires,
         RoleID = (select RoleID from bluebin.BlueBinRoles where RoleName = @RoleName),
-		Title = @Title
+		Title = @Title,
+		GembaTier = @GembaTier
 		Where BlueBinUserID = @BlueBinUserID
 	END
 	ELSE
@@ -54,7 +56,8 @@ IF (@Password = '' or @Password is null)
         PasswordExpires = @PasswordExpires,
 		[Password] = (HASHBYTES('SHA1', @newpwdHash)),
         RoleID = (select RoleID from bluebin.BlueBinRoles where RoleName = @RoleName),
-		Title = @Title
+		Title = @Title,
+		GembaTier = @GembaTier
 		Where BlueBinUserID = @BlueBinUserID
 	END
 

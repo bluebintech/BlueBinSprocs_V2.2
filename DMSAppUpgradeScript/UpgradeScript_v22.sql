@@ -82,25 +82,28 @@ END
 
 --*******************
 --User and Operations
-ALTER TABLE bluebin.BlueBinUser ALTER COLUMN UserLogin varchar(60)
-GO
-ALTER TABLE bluebin.BlueBinUser ALTER COLUMN Email varchar(60)
-GO
-ALTER TABLE bluebin.BlueBinResource ALTER COLUMN [Login] varchar(60)
-GO
-ALTER TABLE bluebin.BlueBinResource ALTER COLUMN Email varchar(60)
-GO
-ALTER TABLE bluebin.Config ALTER COLUMN ConfigValue varchar(100)
-GO
-ALTER TABLE bluebin.DimWarehouseItem ALTER COLUMN LocationID char(10)
-GO
-ALTER TABLE gemba.GembaAuditNode ALTER COLUMN LocationID char(10)
-GO
-ALTER TABLE qcn.QCN ALTER COLUMN LocationID char(10)
-GO
-ALTER TABLE tableau.Sourcing ALTER COLUMN ShipLocation char(10)
-GO
-ALTER TABLE tableau.Sourcing ALTER COLUMN PurchaseLocation char(10)
+--ALTER TABLE bluebin.BlueBinUser ALTER COLUMN UserLogin varchar(60)
+--GO
+--ALTER TABLE bluebin.BlueBinUser ALTER COLUMN Email varchar(60)
+--GO
+--ALTER TABLE bluebin.BlueBinResource ALTER COLUMN [Login] varchar(60)
+--GO
+--ALTER TABLE bluebin.BlueBinResource ALTER COLUMN Email varchar(60)
+--GO
+--ALTER TABLE bluebin.Config ALTER COLUMN ConfigValue varchar(100)
+--GO
+--ALTER TABLE bluebin.DimWarehouseItem ALTER COLUMN LocationID char(10)
+--GO
+--ALTER TABLE gemba.GembaAuditNode ALTER COLUMN LocationID char(10)
+--GO
+--ALTER TABLE qcn.QCN ALTER COLUMN LocationID char(10)
+--GO
+
+
+if not exists(select * from sys.columns where name = 'GembaTier' and object_id = (select object_id from sys.tables where name = 'BlueBinUser'))
+BEGIN
+ALTER TABLE bluebin.BlueBinUser ADD [GembaTier] varchar(50);
+END
 GO
 
 if not exists(select * from sys.columns where name = 'Description' and object_id = (select object_id from sys.tables where name = 'BlueBinOperations'))
@@ -333,11 +336,76 @@ Print 'Table Updates Complete'
 
 --*****************************************************
 --**************************NEWTABLE**********************
+if not exists (select * from sys.tables where name = 'TrainingModule')
+BEGIN
+CREATE TABLE [bluebin].[TrainingModule](
+	[TrainingModuleID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[ModuleName] varchar (50) not null,
+	[ModuleDescription] varchar (255),
+	[Active] int not null,
+	[Required] int NULL,
+	[LastUpdated] datetime not null
+)
 
+;
+insert into bluebin.TrainingModule (ModuleName,ModuleDescription,Active,Required,LastUpdated) VALUES
+('SOP 3000','SOP 3000',1,1,getdate()),
+('SOP 3001','SOP 3001',1,1,getdate()),
+('SOP 3002','SOP 3002',1,1,getdate()),
+('SOP 3003','SOP 3003',1,1,getdate()),
+('SOP 3004','SOP 3004',1,1,getdate()),
+('SOP 3005','SOP 3005',1,1,getdate()),
+('SOP 3006','SOP 3006',1,1,getdate()),
+('SOP 3007','SOP 3007',1,1,getdate()),
+('SOP 3008','SOP 3008',1,1,getdate()),
+('SOP 3009','SOP 3009',1,1,getdate()),
+('SOP 3010','SOP 3010',1,1,getdate()),
+('DMS App Training','Training on the use of Gemba, QCN, and Dashboard as applicable',1,0,getdate())
+;
+END
+GO
 
 --*****************************************************
 --**************************NEWTABLE**********************
 
+
+if not exists (select * from sys.tables where name = 'Training')
+BEGIN
+CREATE TABLE [bluebin].[Training](
+	[TrainingID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[BlueBinResourceID] INT NOT NULL,
+	[TrainingModuleID] INT not null,
+	[Status] varchar(10) not null,
+	[BlueBinUserID] int NULL,
+	[Active] int not null,
+	[LastUpdated] datetime not null
+)
+;
+ALTER TABLE [bluebin].[Training] WITH CHECK ADD FOREIGN KEY([BlueBinResourceID])
+REFERENCES [bluebin].[BlueBinResource] ([BlueBinResourceID])
+;
+ALTER TABLE [bluebin].[Training] WITH CHECK ADD FOREIGN KEY([BlueBinUserID])
+REFERENCES [bluebin].[BlueBinUser] ([BlueBinUserID])
+;
+ALTER TABLE [bluebin].[Training] WITH CHECK ADD FOREIGN KEY([TrainingModuleID])
+REFERENCES [bluebin].[TrainingModule] ([TrainingModuleID])
+;
+if not exists (select * from bluebin.Training)
+BEGIN
+insert into bluebin.Training ([BlueBinResourceID],[TrainingModuleID],[Status],[BlueBinUserID],[Active],[LastUpdated])
+select 
+u.BlueBinResourceID,
+t.TrainingModuleID,
+'No',
+(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = 'gbutler@bluebin.com'),
+1,
+getdate()
+from bluebin.TrainingModule t, bluebin.BlueBinResource u
+where t.Required = 1 and u.Title in (select ConfigValue from bluebin.Config where ConfigName = 'TrainingTitle') 
+END
+
+END
+GO
 
 
 --*****************************************************
@@ -1568,53 +1636,177 @@ GO
 grant exec on sp_ValidateBlueBinRole to appusers
 GO
 
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectTrainingModule') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectTrainingModule
+GO
+
+
+--exec sp_SelectTrainingModule 
+CREATE PROCEDURE sp_SelectTrainingModule
+
+
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+select 
+ModuleName,
+ModuleDescription,
+Active,
+Required,
+LastUpdated
+ from bluebin.TrainingModule
+
+
+END
+
+GO
+grant exec on sp_SelectTrainingModule to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertTrainingModule') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertTrainingModule
+GO
+
+--exec sp_InsertTrainingModule '',''
+--select * from bluebin.TrainingModule
+
+CREATE PROCEDURE sp_InsertTrainingModule 
+@ModuleName varchar(50),
+@ModuleDescription varchar(255),
+@Required int
+
+
+--WITH ENCRYPTION 
+AS
+BEGIN
+SET NOCOUNT ON
+
+if not exists (select * from bluebin.TrainingModule where ModuleName = @ModuleName)
+	BEGIN
+	insert into bluebin.TrainingModule (ModuleName,ModuleDescription,[Active],Required,[LastUpdated])
+	select 
+		@ModuleName,
+		@ModuleDescription,
+		1, --Default Active to Yes
+		@Required,
+		getdate()
+
+		END
+END
+GO
+
+grant exec on sp_InsertTrainingModule to appusers
+GO
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteTrainingModule') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteTrainingModule
+GO
+
+CREATE PROCEDURE sp_DeleteTrainingModule
+@TrainingModuleID int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+Update [bluebin].[TrainingModule] set [Active] = 0, [LastUpdated] = getdate() where TrainingModuleID = @TrainingModuleID
+
+END
+GO
+grant exec on sp_DeleteTrainingModule to appusers
+GO
 
 --*****************************************************
 --**************************SPROC**********************
 
-if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
-drop procedure sp_SelectBlueBinTraining
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditTrainingModule') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_EditTrainingModule
 GO
 
---exec sp_SelectBlueBinTraining 'Butler'
-CREATE PROCEDURE sp_SelectBlueBinTraining
-@Name varchar (30)
+--exec sp_EditTrainingModule ''
+--select * from [bluebin].[TrainingModule]
+
+
+CREATE PROCEDURE sp_EditTrainingModule
+@TrainingModuleID int, 
+@ModuleName varchar(50),
+@ModuleDescription varchar(255),
+@Required int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+
+update [bluebin].[TrainingModule]
+set
+ModuleName=@ModuleName,
+ModuleDescription=@ModuleDescription,
+@Required=@Required,
+LastUpdated = getdate()
+where TrainingModuleID = @TrainingModuleID
+	;
+
+END
+GO
+
+grant exec on sp_EditTrainingModule to appusers
+GO
+
+
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectTraining
+GO
+
+--select * from bluebin.Training  select * from bluebin.BlueBinResource
+--exec sp_SelectTraining '','300'
+CREATE PROCEDURE sp_SelectTraining
+@Name varchar (30),
+@Module varchar (50)
+
 
 --WITH ENCRYPTION
 AS
 BEGIN
 SET NOCOUNT ON
 SELECT 
-bbt.[BlueBinTrainingID],
+bbt.[TrainingID],
 bbt.[BlueBinResourceID], 
 bbr.[LastName] + ', ' +bbr.[FirstName] as ResourceName, 
 bbr.Title,
-case when 
-		bbt.[Form3000]='Trained' and bbt.[Form3001]='Trained' and bbt.[Form3002]='Trained' and 
-		bbt.[Form3003]='Trained' and bbt.[Form3004]='Trained' and bbt.[Form3005]='Trained' and 
-		bbt.[Form3006]='Trained' and bbt.[Form3007]='Trained' and bbt.[Form3008]='Trained' and 
-		bbt.[Form3009]='Trained' and bbt.[Form3010] ='Trained' then 'Yes' Else 'No' end as FullyTrained,
-	bbt.[Form3000],
-		bbt.[Form3001],
-			bbt.[Form3002],
-				bbt.[Form3003],
-					bbt.[Form3004],
-						bbt.[Form3005],
-							bbt.[Form3006],
-								bbt.[Form3007],
-									bbt.[Form3008],
-										bbt.[Form3009],
-											bbt.[Form3010],
-
+bbt.Status,
+ISNULL(trained.Ct,0) as Trained,
+ISNULL(trained.Ct,0) + ISNULL(nottrained.Ct,0) as Total,
+bbtm.ModuleName,
+bbtm.ModuleDescription,
 ISNULL((bbu.[LastName] + ', ' +bbu.[FirstName]),'N/A') as Updater,
+case when bbt.Active = 0 then 'No' else 'Yes' end as Active,
+
 bbt.LastUpdated
 
-FROM [bluebin].[BlueBinTraining] bbt
+FROM [bluebin].[Training] bbt
 inner join [bluebin].[BlueBinResource] bbr on bbt.[BlueBinResourceID] = bbr.[BlueBinResourceID]
+inner join bluebin.TrainingModule bbtm on bbt.TrainingModuleID = bbtm.TrainingModuleID
 left join [bluebin].[BlueBinUser] bbu on bbt.[BlueBinUserID] = bbu.[BlueBinUserID]
-
+left join (select BlueBinResourceID,count(*) as Ct from [bluebin].[Training] where Active = 1 and Status = 'Trained' group by BlueBinResourceID) trained on bbt.[BlueBinResourceID] = trained.[BlueBinResourceID]
+left join (select BlueBinResourceID,count(*) as Ct from [bluebin].[Training] where Active = 1 and Status <> 'Trained' group by BlueBinResourceID) nottrained on bbt.[BlueBinResourceID] = nottrained.[BlueBinResourceID]
 WHERE 
 bbt.Active = 1 and 
+bbtm.ModuleName like '%' + @Module + '%' and 
 (bbr.[LastName] like '%' + @Name + '%' 
 	OR bbr.[FirstName] like '%' + @Name + '%') 
 	
@@ -1622,8 +1814,111 @@ ORDER BY bbr.[LastName]
 END
 
 GO
-grant exec on sp_SelectBlueBinTraining to appusers
+grant exec on sp_SelectTraining to appusers
 GO
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertTraining
+GO
+
+--exec sp_InsertTraining 1,'Yes','No','No','No','No','No','No','No','No','No','No','gbutler@bluebin.com'
+
+
+CREATE PROCEDURE sp_InsertTraining
+@BlueBinResource int,--varchar(255), 
+@TrainingModuleID int,
+@Status varchar(10),
+@Updater varchar(255)
+
+--WITH ENCRYPTION 
+AS
+BEGIN
+SET NOCOUNT ON
+
+if not exists (select * from bluebin.Training where Active = 1 and TrainingModuleID = @TrainingModuleID and BlueBinResourceID in (select BlueBinResourceID from bluebin.BlueBinResource where BlueBinResourceID  = @BlueBinResource))--
+	BEGIN
+	insert into bluebin.Training ([BlueBinResourceID],[TrainingModuleID],[Status],[BlueBinUserID],[Active],[LastUpdated])
+	select 
+		@BlueBinResource,
+		@TrainingModuleID,
+		@Status,
+		(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
+		1, --Default Active to Yes
+		getdate()
+
+
+	
+	;
+	declare @TrainingID int
+	SET @TrainingID = SCOPE_IDENTITY()
+		exec sp_InsertMasterLog @Updater,'Training','New Training Record Entered',@TrainingID
+	END
+END
+GO
+
+grant exec on sp_InsertTraining to appusers
+GO
+
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteTraining
+GO
+
+CREATE PROCEDURE sp_DeleteTraining
+@TrainingID int
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+Update [bluebin].[Training] set [Active] = 0, [LastUpdated] = getdate() where TrainingID = @TrainingID
+
+END
+GO
+grant exec on sp_DeleteTraining to appusers
+GO
+
+--*****************************************************
+--**************************SPROC**********************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_EditTraining
+GO
+
+--exec sp_EditTraining ''
+--select * from [bluebin].[Training]
+
+
+CREATE PROCEDURE sp_EditTraining
+@TrainingID int, 
+@Status varchar(10),
+@Updater varchar(255)
+
+--WITH ENCRYPTION
+AS
+BEGIN
+SET NOCOUNT ON
+
+
+update [bluebin].[Training]
+set
+Status=@Status,
+BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
+	LastUpdated = getdate()
+where TrainingID = @TrainingID
+	;
+exec sp_InsertMasterLog @Updater,'Training','Training Record Updated',@TrainingID
+END
+GO
+
+grant exec on sp_EditTraining to appusers
+GO
+
+
+
 
 
 --*****************************************************
@@ -2411,147 +2706,7 @@ GO
 grant exec on sp_EditQCNType to appusers
 GO
 
---*****************************************************
---**************************SPROC**********************
-if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
-drop procedure sp_InsertBlueBinTraining
-GO
 
---exec sp_InsertBlueBinTraining 1,'Yes','No','No','No','No','No','No','No','No','No','No','gbutler@bluebin.com'
-
-
-CREATE PROCEDURE sp_InsertBlueBinTraining
-@BlueBinResource int,--varchar(255), 
-@Form3000 varchar(10),
-@Form3001 varchar(10),
-@Form3002 varchar(10),
-@Form3003 varchar(10),
-@Form3004 varchar(10),
-@Form3005 varchar(10),
-@Form3006 varchar(10),
-@Form3007 varchar(10),
-@Form3008 varchar(10),
-@Form3009 varchar(10),
-@Form3010 varchar(10),
-@Updater varchar(255)
-
---WITH ENCRYPTION 
-AS
-BEGIN
-SET NOCOUNT ON
-select * from bluebin.BlueBinResource
-
-if not exists (select * from bluebin.BlueBinTraining where Active = 1 and BlueBinResourceID in (select BlueBinResourceID from bluebin.BlueBinResource where BlueBinResourceID  = @BlueBinResource))--
-	BEGIN
-	insert into [bluebin].[BlueBinTraining]
-	select 
-	@BlueBinResource,
-	--(select BlueBinResourceID from bluebin.BlueBinResource where LastName + ', ' + FirstName = @BlueBinResource),
-	@Form3000,
-	@Form3001,
-	@Form3002,
-	@Form3003,
-	@Form3004,
-	@Form3005,
-	@Form3006,
-	@Form3007,
-	@Form3008,
-	@Form3009,
-	@Form3010,
-	1, --Default Active to Yes
-	(select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
-	getdate()
-
-	;
-	declare @BlueBinTrainingID int
-	SET @BlueBinTrainingID = SCOPE_IDENTITY()
-		exec sp_InsertMasterLog @Updater,'Training','New Training Record Entered',@BlueBinTrainingID
-	END
-END
-GO
-
-grant exec on sp_InsertBlueBinTraining to appusers
-GO
-
-
-
---*****************************************************
---**************************SPROC**********************
-
-if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
-drop procedure sp_DeleteBlueBinTraining
-GO
-
-CREATE PROCEDURE sp_DeleteBlueBinTraining
-@BlueBinTrainingID int
-
---WITH ENCRYPTION
-AS
-BEGIN
-SET NOCOUNT ON
-Update [bluebin].[BlueBinTraining] set [Active] = 0, [LastUpdated] = getdate() where BlueBinTrainingID = @BlueBinTrainingID
-
-END
-GO
-grant exec on sp_DeleteBlueBinTraining to appusers
-GO
-
-
---*****************************************************
---**************************SPROC**********************
-
-if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
-drop procedure sp_EditBlueBinTraining
-GO
-
---exec sp_EditBlueBinTraining '2','Yes','Yes','Yes','No','No','No','No','No','No','No','No','gbutler@bluebin.com'
---select * from [bluebin].[BlueBinTraining]
-
-
-CREATE PROCEDURE sp_EditBlueBinTraining
-@BlueBinTrainingID int, 
-@Form3000 varchar(10),
-@Form3001 varchar(10),
-@Form3002 varchar(10),
-@Form3003 varchar(10),
-@Form3004 varchar(10),
-@Form3005 varchar(10),
-@Form3006 varchar(10),
-@Form3007 varchar(10),
-@Form3008 varchar(10),
-@Form3009 varchar(10),
-@Form3010 varchar(10),
-@Updater varchar(255)
-
---WITH ENCRYPTION
-AS
-BEGIN
-SET NOCOUNT ON
-
-
-update [bluebin].[BlueBinTraining]
-set
-	Form3000 = @Form3000,
-	Form3001 = @Form3001,
-	Form3002 = @Form3002,
-	Form3003 = @Form3003,
-	Form3004 = @Form3004,
-	Form3005 = @Form3005,
-	Form3006 = @Form3006,
-	Form3007 = @Form3007,
-	Form3008 = @Form3008,
-	Form3009 = @Form3009,
-	Form3010 = @Form3010,
-	BlueBinUserID = (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Updater)),
-	LastUpdated = getdate()
-where BlueBinTrainingID = @BlueBinTrainingID
-	;
-exec sp_InsertMasterLog @Updater,'Training','Training Record Updated',@BlueBinTrainingID
-END
-GO
-
-grant exec on sp_EditBlueBinTraining to appusers
-GO
 
 
 --*****************************************************
@@ -2582,10 +2737,16 @@ if exists(select * from bluebin.BlueBinResource where FirstName = @FirstName and
 	BEGIN
 		if not exists (select * from bluebin.BlueBinTraining where BlueBinResourceID in (select BlueBinResourceID from bluebin.BlueBinResource where FirstName = @FirstName and LastName = @LastName and [Login] = @Login))
 		BEGIN
-		insert into [bluebin].[BlueBinTraining]
-			select BlueBinResourceID,'No','No','No','No','No','No','No','No','No','No','No',1,NULL,getdate()
-			from bluebin.BlueBinResource
-			where FirstName = @FirstName and LastName = @LastName and [Login] = @Login
+		insert into bluebin.Training ([BlueBinResourceID],[TrainingModuleID],[Status],[BlueBinUserID],[Active],[LastUpdated])
+			select 
+			u.BlueBinResourceID,
+			t.TrainingModuleID,
+			'No',
+			(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = 'gbutler@bluebin.com'),
+			1,
+			getdate()
+			from bluebin.TrainingModule t, bluebin.BlueBinResource u
+			where t.Required = 1 and  u.FirstName = @FirstName and u.LastName = @LastName and u.[Login] = @Login
 			and Title in (select ConfigValue from bluebin.Config where ConfigName = 'TrainingTitle')
 		END
 		GOTO THEEND
@@ -2594,11 +2755,17 @@ if exists(select * from bluebin.BlueBinResource where FirstName = @FirstName and
 insert into bluebin.BlueBinResource (FirstName,LastName,MiddleName,[Login],Email,Phone,Cell,Title,Active,LastUpdated) 
 VALUES (@FirstName,@LastName,@MiddleName,@Login,@Email,@Phone,@Cell,@Title,1,getdate())
 ;
-insert into [bluebin].[BlueBinTraining]
-		select BlueBinResourceID,'No','No','No','No','No','No','No','No','No','No','No',1,NULL,getdate()
-		from bluebin.BlueBinResource
-		where FirstName = @FirstName and LastName = @LastName and [Login] = @Login
-		and Title in (select ConfigValue from bluebin.Config where ConfigName = 'TrainingTitle')
+	insert into bluebin.Training ([BlueBinResourceID],[TrainingModuleID],[Status],[BlueBinUserID],[Active],[LastUpdated])
+	select 
+	u.BlueBinResourceID,
+	t.TrainingModuleID,
+	'No',
+	(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = 'gbutler@bluebin.com'),
+	1,
+	getdate()
+	from bluebin.TrainingModule t, bluebin.BlueBinResource u
+	where t.Required = 1 and  u.FirstName = @FirstName and u.LastName = @LastName and u.[Login] = @Login
+	and Title in (select ConfigValue from bluebin.Config where ConfigName = 'TrainingTitle')
 
 END
 THEEND:
@@ -2606,7 +2773,6 @@ THEEND:
 GO
 grant exec on sp_InsertBlueBinResource to appusers
 GO
-
 
 
 --*****************************************************
@@ -3239,7 +3405,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertUser') a
 drop procedure sp_InsertUser
 GO
 
---exec sp_InsertUser 'gbutler2@bluebin.com','G','But','','BlueBelt',''  
+--exec sp_InsertUser 'gbutler2@bluebin.com','G','But','','BlueBelt','','Tier2'  
 
 
 CREATE PROCEDURE sp_InsertUser
@@ -3249,7 +3415,8 @@ CREATE PROCEDURE sp_InsertUser
 @MiddleName varchar(30), 
 @RoleName  varchar(30),
 @Email varchar(60),
-@Title varchar(50)
+@Title varchar(50),
+@GembaTier varchar(20)
 	
 --WITH ENCRYPTION
 AS
@@ -3267,9 +3434,9 @@ set @newpwdHash = convert(varbinary(max),rtrim(@RandomPassword))
 
 if not exists (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin))
 	BEGIN
-	insert into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,RoleID,MustChangePassword,PasswordExpires,[Password],Email,Active,LastUpdated,LastLoginDate,Title)
+	insert into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,RoleID,MustChangePassword,PasswordExpires,[Password],Email,Active,LastUpdated,LastLoginDate,Title,GembaTier)
 	VALUES
-	(LOWER(@UserLogin),@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),LOWER(@UserLogin),1,getdate(),getdate(),@Title)
+	(LOWER(@UserLogin),@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),LOWER(@UserLogin),1,getdate(),getdate(),@Title,@GembaTier)
 	;
 	SET @NewBlueBinUserID = SCOPE_IDENTITY()
 	set @message = 'New User Created - '+ LOWER(@UserLogin)
@@ -3315,7 +3482,8 @@ CREATE PROCEDURE sp_EditUser
 @PasswordExpires int,
 @Password varchar(50),
 @RoleName  varchar(30),
-@Title varchar(50)
+@Title varchar(50),
+@GembaTier varchar(50)
 
 
 --WITH ENCRYPTION
@@ -3337,7 +3505,8 @@ IF (@Password = '' or @Password is null)
         MustChangePassword = @MustChangePassword,
         PasswordExpires = @PasswordExpires,
         RoleID = (select RoleID from bluebin.BlueBinRoles where RoleName = @RoleName),
-		Title = @Title
+		Title = @Title,
+		GembaTier = @GembaTier
 		Where BlueBinUserID = @BlueBinUserID
 	END
 	ELSE
@@ -3347,18 +3516,19 @@ IF (@Password = '' or @Password is null)
         LastName = @LastName, 
         MiddleName = @MiddleName, 
         Active = @Active,
-        Email = LOWER(@UserLogin),--@Email, 
+        Email = @UserLogin,--@Email, 
         LastUpdated = getdate(), 
         MustChangePassword = @MustChangePassword,
         PasswordExpires = @PasswordExpires,
 		[Password] = (HASHBYTES('SHA1', @newpwdHash)),
         RoleID = (select RoleID from bluebin.BlueBinRoles where RoleName = @RoleName),
-		Title = @Title
+		Title = @Title,
+		GembaTier = @GembaTier
 		Where BlueBinUserID = @BlueBinUserID
 	END
 
 	;
-	set @message = 'User Updated - '+ LOWER(@UserLogin)
+	set @message = 'User Updated - '+ @UserLogin
 	select @fakelogin = 'gbutler@bluebin.com'
 	exec sp_InsertMasterLog @fakelogin,'Users',@message,@BlueBinUserID
 END
@@ -3385,7 +3555,7 @@ BEGIN
 SET NOCOUNT ON
 	SELECT 
 	[BlueBinUserID]
-      ,LOWER(UserLogin) as [UserLogin]
+      ,[UserLogin]
       ,[FirstName]
       ,[LastName]
       ,[MiddleName]
@@ -3407,6 +3577,7 @@ SET NOCOUNT ON
       ,[PasswordExpires]
       ,'' as [Password]
       ,[Email]
+	  ,GembaTier
   FROM [bluebin].[BlueBinUser] bbu
   inner join bluebin.BlueBinRoles bbur on bbu.RoleID = bbur.RoleID
   where UserLogin <> ''
@@ -5184,7 +5355,26 @@ Print 'Keys and Constraints Complete'
 --*************************************************************************************************************************************************
 --General CleanUp
 --*************************************************************************************************************************************************
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_SelectBlueBinTraining
+GO
 
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_InsertBlueBinTraining
+GO
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_DeleteBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_DeleteBlueBinTraining
+GO
+
+if exists (select * from dbo.sysobjects where id = object_id(N'sp_EditBlueBinTraining') and OBJECTPROPERTY(id, N'IsProcedure') = 1)
+drop procedure sp_EditBlueBinTraining
+GO
+
+if exists (select * from sys.tables where name = 'BlueBinTraining')
+BEGIN
+DROP TABLE bluebin.BlueBinTraining
+END
 
 if not exists (select * from sys.indexes where name = 'DimItemIndex')
 BEGIN
@@ -5249,7 +5439,7 @@ Print 'Job Updates Complete'
 --Version Update
 --*************************************************************************************************************************************************
 
-declare @version varchar(50) = '2.2.20160318' --Update Version Number here
+declare @version varchar(50) = '2.2.20160415' --Update Version Number here
 
 
 if not exists (select * from bluebin.Config where ConfigName = 'Version')

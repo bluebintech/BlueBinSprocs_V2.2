@@ -12,6 +12,7 @@ SET NOCOUNT ON
 
 select 
 	q.[QCNID],
+	df.FacilityName,
 	q.[LocationID],
         dl.[LocationName],
 		db.BinSequence,
@@ -47,6 +48,7 @@ inner join [bluebin].[BlueBinResource] u on q.RequesterUserID = u.BlueBinResourc
 left join [bluebin].[BlueBinResource] v on q.AssignedUserID = v.BlueBinResourceID
 inner join [qcn].[QCNType] qt on q.QCNTypeID = qt.QCNTypeID
 inner join [qcn].[QCNStatus] qs on q.QCNStatusID = qs.QCNStatusID
+left join bluebin.DimFacility df on dl.LocationFacility = df.FacilityID
 
 WHERE q.Active = 1 
             order by q.[DateEntered] asc--,convert(int,(getdate() - q.[DateEntered])) desc

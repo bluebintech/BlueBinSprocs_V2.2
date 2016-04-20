@@ -68,7 +68,6 @@ FROM ITEMLOC
 WHERE LOCATION IN (SELECT [ConfigValue] FROM [bluebin].[Config] WHERE  [ConfigName] = 'LOCATION' AND Active = 1) AND LEN(LTRIM(USER_FIELD3)) > 0
 ) b
 ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(b.ITEM))
---WHERE a.ITEM = '53353'
 ) a
 Group by ITEM
 	  
@@ -84,12 +83,32 @@ FROM   POLINE a
 			   
 GROUP  BY ITEM
 
-
-SELECT distinct LOCATION,ITEM,
-       PREFER_BIN
+SELECT 
+   il1.ITEM,
+   STUFF((SELECT  ', '  + il2.PREFER_BIN + '(' + rtrim(il2.LOCATION) + ')'
+          FROM ITEMLOC il2
+          WHERE  il2.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+		  and il2.PREFER_BIN <> '' and il2.ACTIVE_STATUS = 'A' and il2.ITEM = il1.ITEM 
+		  order by il2.LOCATION
+          FOR XML PATH('')), 1, 1, '') [PREFER_BIN]
 INTO   #StockLocations
-FROM   ITEMLOC
-WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
+FROM ITEMLOC il1
+WHERE il1.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') and il1.PREFER_BIN <> '' and il1.ACTIVE_STATUS = 'A'
+
+GROUP BY il1.ITEM
+ORDER BY 1
+
+--**Old Stock Locations
+--SELECT 
+--Row_number()
+--             OVER(
+--               ORDER BY ITEM,LOCATION) as Num,
+--	LOCATION,ITEM,
+--       PREFER_BIN
+--INTO   #StockLocations
+--FROM   ITEMLOC
+--WHERE  LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
+--and ACTIVE_STATUS = 'A' and ITEM in  ('61830','12296') and PREFER_BIN <> ''
 
 
 SELECT distinct  a.ITEM,
@@ -110,14 +129,20 @@ FROM   POVAGRMTLN a
                   AND a.EFFECTIVE_DT = b.EFFECTIVE_DT
                   AND a.EXPIRE_DT = b.EXPIRE_DT
 				  AND a.LINE_NBR = b.LINE_NBR
-WHERE  a.HOLD_FLAG = 'N' 
+WHERE  a.HOLD_FLAG = 'N'  
 
 
+select distinct a.ITEM,a.VENDOR
+into #ItemVendor
+from ITEMSRC a
+where a.REPLENISH_PRI = 1
+        AND a.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+		and a.REPL_FROM_LOC = '' 
 
 
 /*********************		CREATE DimItem		**************************************/
-                      
-
+         
+		
 
 SELECT Row_number()
          OVER(
@@ -132,7 +157,7 @@ SELECT Row_number()
        d.VENDOR_VNAME                      AS ItemVendor,
        c.VENDOR                            AS ItemVendorNumber,
        f.LAST_PO_DATE                      AS LastPODate,
-       g.PREFER_BIN                        AS StockLocation,
+       ltrim(g.PREFER_BIN)                       AS StockLocation,
        h.VEN_ITEM                          AS VendorItemNumber,
 	   a.STOCK_UOM							AS StockUOM,
        h.UOM                               AS BuyUOM,
@@ -140,13 +165,12 @@ SELECT Row_number()
        + ' EA' + '/'+Ltrim(Rtrim(h.UOM)) AS PackageString
 INTO   bluebin.DimItem
 FROM   ITEMMAST a 
-       --LEFT JOIN ICMANFCODE b
-       --       ON a.MANUF_CODE = b.MANUF_CODE
-       LEFT JOIN ITEMSRC c 
-              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(c.ITEM))
-                 AND c.REPLENISH_PRI = 1
-                 AND c.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
-				 and c.REPL_FROM_LOC = ''
+     --  LEFT JOIN ITEMSRC c 
+     --         ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(c.ITEM))
+     --            AND c.REPLENISH_PRI = 1
+     --            AND c.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
+				 --and c.REPL_FROM_LOC = ''
+	   LEFT JOIN #ItemVendor c on ltrim(rtrim(a.ITEM)) = ltrim(rtrim(c.ITEM))
        LEFT JOIN (select distinct VENDOR_GROUP,VENDOR,VENDOR_VNAME from APVENMAST) d 
               ON ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(d.VENDOR))
        LEFT JOIN #ClinicalDescriptions e
@@ -154,10 +178,9 @@ FROM   ITEMMAST a
        LEFT JOIN #LastPO f
               ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(f.ITEM))
        LEFT JOIN #StockLocations g
-              ON ltrim(rtrim(c.ITEM)) = ltrim(rtrim(g.ITEM)) and c.LOCATION = g.LOCATION and c.REPL_FROM_LOC = ''
+              ON ltrim(rtrim(c.ITEM)) = ltrim(rtrim(g.ITEM)) 
        LEFT JOIN #ItemContract h
-              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(h.ITEM)) AND ltrim(rtrim(c.VENDOR)) = ltrim(rtrim(h.VENDOR))
-
+              ON ltrim(rtrim(a.ITEM)) = ltrim(rtrim(h.ITEM)) AND ltrim(rtrim(d.VENDOR)) = ltrim(rtrim(h.VENDOR))
 order by a.ITEM
 
 
@@ -172,6 +195,8 @@ DROP TABLE #LastPO
 DROP TABLE #StockLocations
 
 DROP TABLE #ItemContract
+
+DROP TABLE #ItemVendor
 
 GO
 

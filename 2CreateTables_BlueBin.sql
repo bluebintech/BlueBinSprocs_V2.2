@@ -249,40 +249,80 @@ CREATE TABLE [bluebin].[Image](
 END
 GO
 
-if not exists (select * from sys.tables where name = 'BlueBinTraining')
+
+
+
+if not exists (select * from sys.tables where name = 'TrainingModule')
 BEGIN
-CREATE TABLE [bluebin].[BlueBinTraining](
-	[BlueBinTrainingID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
-	[BlueBinResourceID] INT NOT NULL,
-	[Form3000] varchar(10) not null,
-		[Form3001] varchar(10) not null,
-			[Form3002] varchar(10) not null,
-				[Form3003] varchar(10) not null,
-					[Form3004] varchar(10) not null,
-						[Form3005] varchar(10) not null,
-							[Form3006] varchar(10) not null,
-								[Form3007] varchar(10) not null,
-									[Form3008] varchar(10) not null,
-										[Form3009] varchar(10) not null,
-											[Form3010] varchar(10) not null,
+CREATE TABLE [bluebin].[TrainingModule](
+	[TrainingModuleID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[ModuleName] varchar (50) not null,
+	[ModuleDescription] varchar (255),
 	[Active] int not null,
+	[Required] int NULL,
+	[LastUpdated] datetime not null
+)
+
+;
+insert into bluebin.TrainingModule (ModuleName,ModuleDescription,Active,Required,LastUpdated) VALUES
+('SOP 3000','SOP 3000',1,1,getdate()),
+('SOP 3001','SOP 3001',1,1,getdate()),
+('SOP 3002','SOP 3002',1,1,getdate()),
+('SOP 3003','SOP 3003',1,1,getdate()),
+('SOP 3004','SOP 3004',1,1,getdate()),
+('SOP 3005','SOP 3005',1,1,getdate()),
+('SOP 3006','SOP 3006',1,1,getdate()),
+('SOP 3007','SOP 3007',1,1,getdate()),
+('SOP 3008','SOP 3008',1,1,getdate()),
+('SOP 3009','SOP 3009',1,1,getdate()),
+('SOP 3010','SOP 3010',1,1,getdate()),
+('DMS App Training','Training on the use of Gemba, QCN, and Dashboard as applicable',1,0,getdate())
+;
+END
+GO
+
+--*****************************************************
+--**************************NEWTABLE**********************
+
+
+if not exists (select * from sys.tables where name = 'Training')
+BEGIN
+CREATE TABLE [bluebin].[Training](
+	[TrainingID] INT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
+	[BlueBinResourceID] INT NOT NULL,
+	[TrainingModuleID] INT not null,
+	[Status] varchar(10) not null,
 	[BlueBinUserID] int NULL,
+	[Active] int not null,
 	[LastUpdated] datetime not null
 )
 ;
-ALTER TABLE [bluebin].[BlueBinTraining] WITH CHECK ADD FOREIGN KEY([BlueBinResourceID])
+ALTER TABLE [bluebin].[Training] WITH CHECK ADD FOREIGN KEY([BlueBinResourceID])
 REFERENCES [bluebin].[BlueBinResource] ([BlueBinResourceID])
 ;
-ALTER TABLE [bluebin].[BlueBinTraining] WITH CHECK ADD FOREIGN KEY([BlueBinUserID])
+ALTER TABLE [bluebin].[Training] WITH CHECK ADD FOREIGN KEY([BlueBinUserID])
 REFERENCES [bluebin].[BlueBinUser] ([BlueBinUserID])
 ;
-insert into [bluebin].[BlueBinTraining]
-select BlueBinResourceID,'No','No','No','No','No','No','No','No','No','No','No',1,NULL,getdate()
-from bluebin.BlueBinResource
-where BlueBinResourceID not in (select BlueBinResourceID from bluebin.BlueBinTraining)
-	and Title in (select ConfigValue from bluebin.Config where ConfigName = 'TrainingTitle')
+ALTER TABLE [bluebin].[Training] WITH CHECK ADD FOREIGN KEY([TrainingModuleID])
+REFERENCES [bluebin].[TrainingModule] ([TrainingModuleID])
+;
+if not exists (select * from bluebin.Training)
+BEGIN
+insert into bluebin.Training ([BlueBinResourceID],[TrainingModuleID],[Status],[BlueBinUserID],[Active],[LastUpdated])
+select 
+u.BlueBinResourceID,
+t.TrainingModuleID,
+'No',
+(select BlueBinUserID from bluebin.BlueBinUser where UserLogin = 'gbutler@bluebin.com'),
+1,
+getdate()
+from bluebin.TrainingModule t, bluebin.BlueBinResource u
+where t.Required = 1 and u.Title in (select ConfigValue from bluebin.Config where ConfigName = 'TrainingTitle') 
+END
+
 END
 GO
+
 
 if not exists (select * from sys.tables where name = 'Document')
 BEGIN

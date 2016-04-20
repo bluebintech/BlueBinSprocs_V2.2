@@ -38,7 +38,7 @@ SELECT Row_number()
        UNIT_COST
 INTO   #ItemReqs
 FROM   REQLINE a INNER JOIN bluebin.DimLocation b ON a.REQ_LOCATION = b.LocationID
-WHERE  b.BlueBinFlag = 1
+WHERE  b.BlueBinFlag = 1 
 
 SELECT Row_number()
          OVER(
@@ -54,10 +54,9 @@ WHERE  ITEM_TYPE IN ( 'I', 'N' )
                     FROM   ITEMLOC a INNER JOIN bluebin.DimLocation b ON a.LOCATION = b.LocationID
 WHERE  b.BlueBinFlag = 1)
 
-
 SELECT distinct a.ITEM,
        a.GL_CATEGORY,
-       max(b.ISS_ACCOUNT) as ISS_ACCOUNT--,a.LOCATION
+       b.ISS_ACCOUNT,a.LOCATION
 INTO   #ItemAccounts
 FROM   ITEMLOC a 
 		LEFT JOIN ICCATEGORY b
@@ -65,28 +64,21 @@ FROM   ITEMLOC a
                  AND a.LOCATION = b.LOCATION
 WHERE  
 a.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
-and a.ACTIVE_STATUS = 'A' 
-group by a.ITEM,
-       a.GL_CATEGORY
+and a.ACTIVE_STATUS = 'A'
+and a.ITEM = '63236' 
 
 
 
-
-SELECT distinct 
-i.ITEM,
-c.LAST_ISS_COST
+SELECT distinct ITEM,
+       LAST_ISS_COST
 INTO   #ItemStore
-FROM   ITEMLOC i
-left join (select ITEMLOC.ITEM,max(ITEMLOC.LAST_ISS_COST) as LAST_ISS_COST from ITEMLOC
-				inner join (select ITEM,max(LAST_ISSUE_DT) as t from ITEMLOC where ITEM = '1915' group by ITEM) cost on ITEMLOC.ITEM = cost.ITEM and ITEMLOC.LAST_ISSUE_DT = cost.t
-				group by ITEMLOC.ITEM ) c on i.ITEM = c.ITEM
-WHERE  i.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')  and i.ACTIVE_STATUS = 'A'  
-
+FROM   ITEMLOC
+WHERE  LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')  and ITEMLOC.ACTIVE_STATUS = 'A'  
 
 SELECT distinct ITEM,CONSIGNMENT_FL 
 INTO #Consignment
 FROM ITEMMAST
-WHERE  ITEM in (select ITEM from ITEMLOC where LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION'))
+WHERE ITEM in (select ITEM from ITEMLOC where LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION'))
 
 
 
@@ -143,7 +135,9 @@ SELECT Row_number()
 		   LEFT JOIN #Consignment
                   ON ITEMLOC.ITEM = #Consignment.ITEM
 	WHERE DimLocation.BlueBinFlag = 1
-	--and ITEMLOC.ITEM = '1915'
+	
+
+
 
 /*****************************************		DROP Temp Tables	**************************************/
 

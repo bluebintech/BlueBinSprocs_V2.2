@@ -5,7 +5,7 @@ IF EXISTS ( SELECT  *
 
 DROP PROCEDURE  tb_Kanban
 GO
-
+--exec tb_Kanban
 CREATE PROCEDURE tb_Kanban
 
 AS
@@ -19,7 +19,10 @@ END CATCH
 
 
 SELECT distinct DimBin.BinKey,
-       DimBin.LocationID,
+       df.FacilityID,
+	   df.FacilityName,
+	   rqh.REQUESTER,
+	   DimBin.LocationID,
        DimBin.ItemID,
        DimBin.BinSequence,
        DimBin.BinUOM,
@@ -78,6 +81,8 @@ FROM   bluebin.DimBin
 			  AND DimBin.BinFacility = DimLocation.LocationFacility
        LEFT JOIN bluebin.DimBinStatus
               ON FactBinSnapshot.BinStatusKey = DimBinStatus.BinStatusKey
+	   left join bluebin.DimFacility df on bluebin.DimLocation.LocationFacility = df.FacilityID
+	   left join dbo.REQHEADER rqh on FactScan.OrderNum = rqh.REQ_NUMBER
 WHERE  Date >= DimBin.BinGoLiveDate 
 
 GO

@@ -2,7 +2,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_InsertUser') a
 drop procedure sp_InsertUser
 GO
 
---exec sp_InsertUser 'gbutler2@bluebin.com','G','But','','BlueBelt',''  
+--exec sp_InsertUser 'gbutler2@bluebin.com','G','But','','BlueBelt','','Tier2'  
 
 
 CREATE PROCEDURE sp_InsertUser
@@ -12,7 +12,8 @@ CREATE PROCEDURE sp_InsertUser
 @MiddleName varchar(30), 
 @RoleName  varchar(30),
 @Email varchar(60),
-@Title varchar(50)
+@Title varchar(50),
+@GembaTier varchar(20)
 	
 --WITH ENCRYPTION
 AS
@@ -30,9 +31,9 @@ set @newpwdHash = convert(varbinary(max),rtrim(@RandomPassword))
 
 if not exists (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@UserLogin))
 	BEGIN
-	insert into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,RoleID,MustChangePassword,PasswordExpires,[Password],Email,Active,LastUpdated,LastLoginDate,Title)
+	insert into bluebin.BlueBinUser (UserLogin,FirstName,LastName,MiddleName,RoleID,MustChangePassword,PasswordExpires,[Password],Email,Active,LastUpdated,LastLoginDate,Title,GembaTier)
 	VALUES
-	(LOWER(@UserLogin),@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),LOWER(@UserLogin),1,getdate(),getdate(),@Title)
+	(LOWER(@UserLogin),@FirstName,@LastName,@MiddleName,@RoleID,1,@DefaultExpiration,(HASHBYTES('SHA1', @newpwdHash)),LOWER(@UserLogin),1,getdate(),getdate(),@Title,@GembaTier)
 	;
 	SET @NewBlueBinUserID = SCOPE_IDENTITY()
 	set @message = 'New User Created - '+ LOWER(@UserLogin)
