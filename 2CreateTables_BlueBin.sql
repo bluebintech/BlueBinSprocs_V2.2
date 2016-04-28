@@ -88,7 +88,11 @@ VALUES
 ('MENU-Hardware','1','DMS',1,getdate(),''),
 ('MENU-Scanning','1','DMS',1,getdate(),''),
 ('MENU-Other','1','DMS',1,getdate(),''),
-('ADMIN-PARMASTER',0,'DMS',1,getdate(),'')
+('ADMIN-PARMASTER',0,'DMS',1,getdate(),''),
+('ReportDateStart','-90','Tableau',1,getdate(),'This value is how many days back to start the analytics for something like the Kanban table'),
+('SlowBinDays','90','Tableau',1,getdate(),'This is a configuarble value for how many days you want to configure for a bin to be slow.  Default is 90'),
+('StaleBinDays','180','Tableau',1,getdate(),'This is a configuarble value for how many days you want to configure for a bin to be stale.  Default is 180')
+	
 
 END
 GO
@@ -129,7 +133,9 @@ CREATE TABLE [bluebin].[BlueBinUser](
 	[LastLoginDate] datetime not null,
 	[MustChangePassword] int not null,
 	[PasswordExpires] int not null,
-	[LastUpdated] datetime not null
+	[LastUpdated] datetime not null,
+	GembaTier varchar(50) null,
+	ERPUser varchar(10) null
 )
 
 ALTER TABLE [bluebin].[MasterLog] WITH CHECK ADD FOREIGN KEY([BlueBinUserID])

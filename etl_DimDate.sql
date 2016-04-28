@@ -55,9 +55,13 @@ AS
          [Date]    DATETIME
       )
 
-    /*************************************		SET Date Range values (90 day window)					***********************/
-    SET @StartDate = Dateadd(dd, -90, Dateadd(dd, Datediff(dd, 0, Getdate()), 0)) --Starting value of Date Range
-    SET @EndDate = Dateadd(dd, Datediff(dd, 0, Getdate()), 0) --End Value of Date Range
+    /*************************************		SET Date Range values (Configurable window based on bluebin.Config = 'ReportDateStart')					***********************/
+
+	DECLARE @StartDateConfig int
+	select @StartDateConfig = ConfigValue from bluebin.Config where ConfigName = 'ReportDateStart'
+	SET @StartDate = Dateadd(dd, @StartDateConfig, Dateadd(dd, Datediff(dd, 0, Getdate()), 0)) --Starting value of Date Range
+
+	SET @EndDate = Dateadd(dd, Datediff(dd, 0, Getdate()), 0) --End Value of Date Range
     --Extract and assign various parts of Values from Current Date to Variable
     SET @CurrentDate = @StartDate
 

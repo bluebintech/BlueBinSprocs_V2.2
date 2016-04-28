@@ -2,7 +2,7 @@ if exists (select * from dbo.sysobjects where id = object_id(N'sp_SelectQCN') an
 drop procedure sp_SelectQCN
 GO
 
---exec sp_SelectQCN ''
+--exec sp_SelectQCN '',''
 CREATE PROCEDURE sp_SelectQCN
 @LocationName varchar(50)
 ,@Completed int
@@ -46,7 +46,8 @@ di.[ItemManufacturerNumber],
 	q.[DateCompleted],
 	qs.Status,
     case when db.BinCurrentStatus is null then 'N/A' else db.BinCurrentStatus end as BinStatus,
-    q.[LastUpdated]
+    q.[LastUpdated],
+	q.InternalReference
 from [qcn].[QCN] q
 left join [bluebin].[DimBin] db on q.LocationID = db.LocationID and rtrim(q.ItemID) = rtrim(db.ItemID)
 left join [bluebin].[DimItem] di on rtrim(q.ItemID) = rtrim(di.ItemID)

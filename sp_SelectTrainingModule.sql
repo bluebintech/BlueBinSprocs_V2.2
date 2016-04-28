@@ -5,7 +5,7 @@ GO
 
 --exec sp_SelectTrainingModule 
 CREATE PROCEDURE sp_SelectTrainingModule
-
+@Module varchar (50)
 
 
 --WITH ENCRYPTION
@@ -13,14 +13,16 @@ AS
 BEGIN
 SET NOCOUNT ON
 select 
+TrainingModuleID,
 ModuleName,
 ModuleDescription,
 Active,
-Required,
+[Required],
 LastUpdated
  from bluebin.TrainingModule
-
-
+WHERE
+ModuleName like '%' + @Module + '%'
+and Active = 1
 END
 
 GO

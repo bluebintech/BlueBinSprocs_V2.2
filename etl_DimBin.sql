@@ -10,7 +10,7 @@ CREATE PROCEDURE etl_DimBin
 
 AS
 
-
+--exec etl_DimBin
 /***************************		DROP DimBin		********************************/
 BEGIN TRY
     DROP TABLE bluebin.DimBin
@@ -56,7 +56,7 @@ WHERE  b.BlueBinFlag = 1)
 
 
 SELECT distinct a.ITEM,
-       a.GL_CATEGORY,
+       --a.GL_CATEGORY,
        max(b.ISS_ACCOUNT) as ISS_ACCOUNT--,a.LOCATION
 INTO   #ItemAccounts
 FROM   ITEMLOC a 
@@ -65,9 +65,9 @@ FROM   ITEMLOC a
                  AND a.LOCATION = b.LOCATION
 WHERE  
 a.LOCATION in (select ConfigValue from bluebin.Config where ConfigName = 'LOCATION') 
-and a.ACTIVE_STATUS = 'A' 
-group by a.ITEM,
-       a.GL_CATEGORY
+and a.ACTIVE_STATUS = 'A' --and a.ITEM = '3733'
+group by a.ITEM
+       --,a.GL_CATEGORY
 
 
 

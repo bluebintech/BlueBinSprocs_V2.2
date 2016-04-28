@@ -17,6 +17,7 @@ SET NOCOUNT on
 select 
 rq.CREATION_DATE,
 rq.COMPANY,
+df.FacilityName,
 rq.REQ_LOCATION,
 rq.REQ_NUMBER,
 rq.LINE_NBR as Lines,
@@ -26,6 +27,7 @@ from REQLINE rq
 inner join bluebin.DimLocation dl on rq.COMPANY = dl.LocationFacility and rq.REQ_LOCATION = dl.LocationID
 inner join REQHEADER rh on rq.REQ_NUMBER = rh.REQ_NUMBER
 left join REQUESTER r on rh.REQUESTER = r.REQUESTER and rq.COMPANY = r.COMPANY
+inner join bluebin.DimFacility df on rq.COMPANY = df.FacilityID
 --inner join REQUESTER r on rh.REQUESTER = r.REQUESTER
 where rq.CREATION_DATE > getdate()-15
 

@@ -13,7 +13,9 @@ SET NOCOUNT ON
 
 SELECT FISCAL_YEAR                                                                                                                                                                                                  AS FiscalYear,
        ACCT_PERIOD                                                                                                                                                                                                  AS AcctPeriod,
-       a.ACCOUNT                                                                                                                                                                                                    AS Account,
+       a.COMPANY,
+	   df.FacilityName,
+	   a.ACCOUNT                                                                                                                                                                                                    AS Account,
        b.ACCOUNT_DESC                                                                                                                                                                                               AS AccountDesc,
        a.ACCT_UNIT                                                                                                                                                                                                  AS AcctUnit,
        c.DESCRIPTION                                                                                                                                                                                                AS AcctUnitName,
@@ -25,10 +27,13 @@ FROM   GLTRANS a
        INNER JOIN GLNAMES c
                ON a.ACCT_UNIT = c.ACCT_UNIT
                   AND a.COMPANY = c.COMPANY
+		left join bluebin.DimFacility df on a.COMPANY = df.FacilityID
 WHERE  SUMRY_ACCT_ID in (select ConfigValue from bluebin.Config where ConfigName = 'GLSummaryAccountID')
 GROUP  BY FISCAL_YEAR,
           ACCT_PERIOD,
-          a.ACCOUNT,
+          a.COMPANY,
+			df.FacilityName,
+			a.ACCOUNT,
           b.ACCOUNT_DESC,
           a.ACCT_UNIT,
           c.DESCRIPTION 

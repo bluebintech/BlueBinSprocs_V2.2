@@ -13,7 +13,8 @@ CREATE PROCEDURE sp_EditQCN
 @QCNType varchar(255),
 @Details varchar(max),
 @Updates varchar(max),
-@QCNStatus varchar(255)
+@QCNStatus varchar(255),
+@InternalReference varchar(50)
 
 
 --WITH ENCRYPTION
@@ -33,7 +34,8 @@ update [qcn].[QCN] set
                         when @QCNStatus in ('Rejected','Completed') and DateCompleted is not null then DateCompleted
                             else NULL end,
 [QCNStatusID] = (select [QCNStatusID] from [qcn].[QCNStatus] where [Status] = @QCNStatus),
-[LastUpdated] = getdate() 
+[LastUpdated] = getdate(),
+InternalReference = @InternalReference
 WHERE QCNID = @QCNID
 
 

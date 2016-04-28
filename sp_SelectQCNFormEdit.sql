@@ -24,6 +24,7 @@ SELECT
 	,convert(varchar,a.[DateCompleted],101) as [DateCompleted]
 	,qs.Status as QCNStatus
 	,convert(varchar,a.[LastUpdated],101) as [LastUpdated]
+	,InternalReference
 		FROM [qcn].[QCN] a 
 			inner join bluebin.BlueBinResource b1 on a.[RequesterUserID] = b1.BlueBinResourceID
 			left join bluebin.BlueBinResource b2 on a.[AssignedUserID] = b2.BlueBinResourceID

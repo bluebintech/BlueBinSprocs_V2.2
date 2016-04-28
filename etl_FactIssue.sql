@@ -55,7 +55,7 @@ FROM   ICTRANS a
                   AND a.FROM_TO_CMPY = c.LocationFacility
        LEFT JOIN bluebin.DimItem d
                ON a.ITEM = d.ItemID
-WHERE  DOC_TYPE = 'IS' 
+WHERE  DOC_TYPE = 'IS'  and a.DOCUMENT not like '%[A-Z]%' 
 
 GO
 

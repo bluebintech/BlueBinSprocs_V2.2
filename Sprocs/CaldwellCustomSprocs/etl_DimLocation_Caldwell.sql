@@ -24,7 +24,7 @@ LocationMasterID AS LocationKey,
        [LocationID]               AS LocationID,
 --       [LocationId]             AS LocationName,
        [LocationName]             AS LocationName,
-       'Caldwell'                   AS LocationFacility,
+       '1'                   AS LocationFacility,
        CASE
          WHEN LEFT([LocationID], 2) IN (SELECT [ConfigValue]
                                         FROM   [bluebin].[Config]

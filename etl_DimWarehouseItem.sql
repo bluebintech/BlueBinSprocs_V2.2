@@ -23,6 +23,8 @@ END CATCH
 
 SELECT 
 		--d.LocationID,
+		a.COMPANY,
+		df.FacilityName,
 		a.LOCATION as LocationID,
 		a.LOCATION as LocationName,
 		b.ItemKey,
@@ -45,6 +47,7 @@ INTO   bluebin.DimWarehouseItem
 FROM   ITEMLOC a
        INNER JOIN bluebin.DimItem b
                ON a.ITEM = b.ItemID
+		INNER JOIN bluebin.DimFacility df on a.COMPANY = df.FacilityID
        --INNER JOIN ICCATEGORY c
        --        ON a.COMPANY = c.COMPANY
        --           AND a.LOCATION = c.LOCATION

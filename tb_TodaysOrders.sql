@@ -16,6 +16,7 @@ select
 [current].CREATION_DATE,
 [current].COMPANY,
 [current].REQ_LOCATION,
+[current].LocationName,
 [current].Lines as TodayLines,
 ISNULL([past].Lines,0) as YestLines,
 case 
@@ -28,6 +29,7 @@ select
 			rq.CREATION_DATE as CREATION_DATE,
 			rq.COMPANY,
 			rq.REQ_LOCATION,
+			dl.LocationName,
 			count(rq.LINE_NBR) as Lines
 
 			from REQLINE rq
@@ -37,12 +39,14 @@ select
 			group by
 			rq.CREATION_DATE,
 			rq.COMPANY,
-			rq.REQ_LOCATION) [current]
+			rq.REQ_LOCATION,
+			dl.LocationName) [current]
 left join (
 			select 
 			rq.CREATION_DATE+1 as CREATION_DATE,
 			rq.COMPANY,
 			rq.REQ_LOCATION,
+			dl.LocationName,
 			count(rq.LINE_NBR) as Lines
 
 			from REQLINE rq
@@ -52,7 +56,8 @@ left join (
 			group by
 			rq.CREATION_DATE+1,
 			rq.COMPANY,
-			rq.REQ_LOCATION) [past] on [current].COMPANY = past.COMPANY and [current].REQ_LOCATION = past.REQ_LOCATION and [current].CREATION_DATE = past.CREATION_DATE
+			rq.REQ_LOCATION,
+			dl.LocationName) [past] on [current].COMPANY = past.COMPANY and [current].REQ_LOCATION = past.REQ_LOCATION and [current].CREATION_DATE = past.CREATION_DATE
 where [current].CREATION_DATE > getdate()-2
 
 GO

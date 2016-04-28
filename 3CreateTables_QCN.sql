@@ -20,6 +20,7 @@ CREATE TABLE [qcn].[QCN](
 	[QCNTypeID] int NOT NULL,
 	[Details] varchar(max) NULL,
 	[Updates] varchar(max) NULL,
+	[InternalReference] varchar(50) NULL,
 	[DateEntered] datetime not null,
 	[DateCompleted] datetime null,
 	[QCNStatusID] int NOT NULL,

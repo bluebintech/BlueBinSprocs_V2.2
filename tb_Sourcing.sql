@@ -47,7 +47,8 @@ SELECT a.COMPANY,
        a.LOCATION,
        a.BUYER_CODE,
        a.VENDOR,
-       d.REQ_LOCATION,
+       d.OPER_COMPANY,
+	   d.REQ_LOCATION,
        a.VEN_ITEM,
        a.CLOSED_FL,
        a.CXL_QTY,
@@ -127,7 +128,8 @@ SELECT Row_number()
        REC_ACT_DATE                      AS ReceivedDate,
        CLOSE_DATE                        AS CloseDate,
        REQ_LOCATION                      AS PurchaseLocation,
-       VEN_ITEM                          AS VendorItemNbr,
+       OPER_COMPANY                      AS PurchaseFacility,
+	   VEN_ITEM                          AS VendorItemNbr,
        CLOSED_FL                         AS ClosedFlag,
        CXL_QTY                           AS QtyCancelled,
        QUANTITY * ENT_UNIT_CST           AS POAmt,
@@ -173,24 +175,26 @@ FROM #tmpPOStatus
 
 /*************************		CREATE Sourcing		****************************/
 
-SELECT *,
+SELECT a.*,
        CASE
-         WHEN PODeliveryStatus = 'In-Progress' THEN 1
+         WHEN a.PODeliveryStatus = 'In-Progress' THEN 1
          ELSE 0
        END AS InProgress,
        CASE
-         WHEN PODeliveryStatus = 'On-Time' THEN 1
+         WHEN a.PODeliveryStatus = 'On-Time' THEN 1
          ELSE 0
        END AS OnTime,
        CASE
-         WHEN PODeliveryStatus = 'Late' THEN 1
+         WHEN a.PODeliveryStatus = 'Late' THEN 1
          ELSE 0
-       END AS Late
+       END AS Late,
+	   case when dl.BlueBinFlag = 1 then 'Yes' else 'No' end as BlueBinFlag,
+	   df.FacilityName
 
 INTO   tableau.Sourcing 
-FROM   #tmpPOs
-LEFT JOIN bluebin.DimLocation dl on PurchaseLocation = dl.LocationID 
-
+FROM   #tmpPOs a
+LEFT JOIN bluebin.DimLocation dl on ltrim(rtrim(a.PurchaseLocation)) = ltrim(rtrim(dl.LocationID)) and ltrim(rtrim(a.PurchaseFacility)) = ltrim(rtrim(dl.LocationFacility))
+LEFT JOIN bluebin.DimFacility df on ltrim(rtrim(a.PurchaseFacility)) = ltrim(rtrim(df.FacilityID))
 /***********************		DROP Temp Tables	**************************/
 
 DROP TABLE #tmpPOLines
@@ -207,3 +211,5 @@ WHERE StepName = 'Sourcing'
 GO
 grant exec on tb_Sourcing to public
 GO
+
+

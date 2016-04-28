@@ -81,6 +81,11 @@ FROM   bluebin.FactScan
 
 
 /***********************************		CREATE FactBinSnapshot		*******************************************/
+declare @SlowBinDays int
+declare @StaleBinDays int
+select @SlowBinDays = ConfigValue from bluebin.Config where ConfigName = 'SlowBinDays'
+select @StaleBinDays = ConfigValue from bluebin.Config where ConfigName = 'StaleBinDays'
+
 
 SELECT #tmpBinDates.BinKey,
        DimLocation.LocationKey,
@@ -96,8 +101,8 @@ SELECT #tmpBinDates.BinKey,
 	   BinVelocity,
        CASE 
 	    WHEN #tmpScannedBins.BinKey IS NULL AND COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) < 90  THEN 6
-		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) >= 180 THEN 5
-		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) BETWEEN 90 AND 180 THEN 4
+		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) >= @StaleBinDays THEN 5
+		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) BETWEEN @SlowBinDays AND @StaleBinDays THEN 4
 		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) < 90 AND BinVelocity >= 1.25 THEN 3
 		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) < 90 AND BinVelocity BETWEEN .75 AND 1.25 THEN 2
 		WHEN COALESCE(DaysSinceLastScan, Datediff(Day, #tmpBinDates.BinGoLiveDate, #tmpBinDates.Date)) < 90 AND BinVelocity < .75 THEN 1

@@ -37,6 +37,7 @@ SET NOCOUNT ON
       ,'' as [Password]
       ,[Email]
 	  ,GembaTier
+	  ,ERPUser
   FROM [bluebin].[BlueBinUser] bbu
   inner join bluebin.BlueBinRoles bbur on bbu.RoleID = bbur.RoleID
   where UserLogin <> ''

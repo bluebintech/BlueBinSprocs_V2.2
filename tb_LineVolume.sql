@@ -4,7 +4,7 @@ GO
 
 
 
-CREATE PROCEDURE exec tb_LineVolume
+CREATE PROCEDURE tb_LineVolume
 
 
 AS
@@ -12,7 +12,10 @@ BEGIN
 SET NOCOUNT ON
 
 
-SELECT CREATION_DATE   AS Date,
+SELECT 
+a.COMPANY,
+df.FacilityName,
+CREATION_DATE   AS Date,
        CASE
          WHEN LEFT(a.REQ_LOCATION, 2) IN (SELECT ConfigValue
                                           FROM   [bluebin].[Config]
@@ -32,6 +35,7 @@ FROM   REQLINE a
        INNER JOIN GLNAMES c
                ON b.COMPANY = c.COMPANY
                   AND b.ISS_ACCT_UNIT = c.ACCT_UNIT 
+	   INNER JOIN bluebin.DimFacility df on a.COMPANY = df.FacilityID
 order by 2
 END
 GO

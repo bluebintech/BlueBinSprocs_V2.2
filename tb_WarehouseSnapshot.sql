@@ -11,14 +11,18 @@ BEGIN
 SET NOCOUNT ON
 SELECT 
 	--count(ITEM),
+	
 	SnapshotDate,
+	FacilityName,
 	SUM(SOH * UnitCost) as DollarsOnHand,
 	LocationID,
 	LocationID as LocationName
 FROM bluebin.FactWarehouseSnapshot a
 WHERE SOH > 0
 GROUP BY
+	
 	SnapshotDate,
+	FacilityName,
 	LocationID 
 
 

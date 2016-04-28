@@ -6,7 +6,7 @@ GO
 /*
 declare @Location char(5),@Scanner varchar(255) = 'gbutler@bluebin.com'
 select @Location = LocationID from bluebin.DimLocation where LocationName = 'DN NICU 1'
-exec sp_InsertScanBatch @Location,@Scanner
+exec sp_InsertScanBatch 'BB001','gbutler@bluebin.com'
 */
 
 CREATE PROCEDURE sp_InsertScanBatch
@@ -18,9 +18,12 @@ CREATE PROCEDURE sp_InsertScanBatch
 AS
 BEGIN
 SET NOCOUNT ON
+declare @FacilityID int
+select @FacilityID = max(LocationFacility) from bluebin.DimLocation where rtrim(LocationID) = rtrim(@Location)--Only grab one FacilityID or else bad things will happen
 
-insert into scan.ScanBatch (LocationID,BlueBinUserID,Active,ScanDateTime,Extracted)
+insert into scan.ScanBatch (FacilityID,LocationID,BlueBinUserID,Active,ScanDateTime,Extracted)
 select 
+@FacilityID,
 @Location,
 (select BlueBinUserID from bluebin.BlueBinUser where LOWER(UserLogin) = LOWER(@Scanner)),
 1, --Default Active to Yes
@@ -37,3 +40,4 @@ END
 GO
 grant exec on sp_InsertScanBatch to public
 GO
+

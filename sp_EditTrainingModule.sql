@@ -22,7 +22,7 @@ update [bluebin].[TrainingModule]
 set
 ModuleName=@ModuleName,
 ModuleDescription=@ModuleDescription,
-@Required=@Required,
+[Required]=@Required,
 LastUpdated = getdate()
 where TrainingModuleID = @TrainingModuleID
 	;

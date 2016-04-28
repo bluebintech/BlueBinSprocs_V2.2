@@ -84,6 +84,7 @@ where
 
 select 
 ic.COMPANY AS FacilityKey,
+df.FacilityName,
 ic.LOCATION as LocationID,
 TempB#.MonthEnd as SnapshotDate,
 TempB#.ITEM,
@@ -93,6 +94,7 @@ ic.LAST_ISS_COST  AS UnitCost
 into bluebin.FactWarehouseSnapshot
 from TempB# 
 inner join ITEMLOC ic on TempB#.ITEM = ic.ITEM
+inner join bluebin.DimFacility df on ic.COMPANY = df.FacilityID
 where ic.LOCATION in (Select ConfigValue from bluebin.Config where ConfigName = 'LOCATION')
 
 drop table TempA#

@@ -11,6 +11,7 @@ BEGIN
 SET NOCOUNT ON
 Update [bluebin].[TrainingModule] set [Active] = 0, [LastUpdated] = getdate() where TrainingModuleID = @TrainingModuleID
 
+update bluebin.Training set [Active] = 0, [LastUpdated] = getdate() where TrainingModuleID = @TrainingModuleID
 END
 GO
 grant exec on sp_DeleteTrainingModule to appusers

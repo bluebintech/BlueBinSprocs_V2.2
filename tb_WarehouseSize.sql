@@ -12,7 +12,8 @@ BEGIN
 SET NOCOUNT ON
 
 SELECT 
-       a.LocationID,
+       a.FacilityName,
+	   a.LocationID,
 	   a.LocationName,
 	   a.ItemID,
        a.ItemDescription,
@@ -41,7 +42,9 @@ FROM   bluebin.DimWarehouseItem a
 		LEFT JOIN bluebin.DimItem c
 			   ON a.ItemKey = c.ItemKey
 WHERE  SOHQty > 0 --b.DOC_TYPE = 'IS' and Year(b.TRANS_DATE) >= Year(Getdate()) - 1
-GROUP  BY a.LocationID,
+GROUP  BY 
+a.FacilityName,
+a.LocationID,
 			a.LocationName,
 			a.ItemID,
           a.ItemDescription,

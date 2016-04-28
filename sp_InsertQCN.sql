@@ -13,7 +13,8 @@ CREATE PROCEDURE sp_InsertQCN
 @Details varchar(max),
 @Updates varchar(max),
 @QCNStatus varchar(255),
-@UserLogin varchar (60)
+@UserLogin varchar (60),
+@InternalReference varchar(50)
 
 
 --WITH ENCRYPTION
@@ -35,7 +36,8 @@ insert into [qcn].[QCN]
 								[DateCompleted],
 									[QCNStatusID],
 										[Active],
-											[LastUpdated])
+											[LastUpdated],
+												[InternalReference])
 
 select 
 @LocationID,
@@ -49,7 +51,8 @@ getdate(),
 Case when @QCNStatus in('Rejected','Completed') then getdate() else NULL end,
 (select [QCNStatusID] from [qcn].[QCNStatus] where [Status] = @QCNStatus),
 1, --Active
-getdate() --LastUpdated
+getdate(), --LastUpdated
+@InternalReference
 
 
 SET @QCNID = SCOPE_IDENTITY()
